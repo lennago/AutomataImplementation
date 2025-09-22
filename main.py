@@ -125,7 +125,7 @@ def BruteForce_wrapper(
     res = BruteForce(dag, n, debug=debug, progress_bar=progress_bar).run()
     log_run(
         M=M,
-        M2=M,
+        M2=dag.m,
         N=n,
         seed=seed,
         epsilon=Fraction(0, 1),
@@ -164,7 +164,7 @@ def mainFPRAS_wrapper(
     ).run()
     log_run(
         M=M,
-        M2=M,
+        M2=dag.m,
         N=n,
         seed=seed,
         epsilon=epsilon,
@@ -204,7 +204,7 @@ def dependentFPRAS_wrapper(
     ).run()
     log_run(
         M=M,
-        M2=M,
+        M2=dag.m,
         N=n,
         seed=seed,
         epsilon=epsilon,
@@ -225,6 +225,7 @@ def dependentFPRAS_wrapper(
 
 if __name__ == "__main__":
     # Example usage
+    import random
     from nfa_generator import (
         tune_and_sample_edges,
         sample_edges_uniform_over_counts,
@@ -247,6 +248,16 @@ if __name__ == "__main__":
     while True:
         random_data = os.urandom(8)
         seed = int.from_bytes(random_data, byteorder="big") if SEED is None else SEED
+        NUMBER_OF_STATES = random.randint(2, 30)
+        NUMBER_OF_LAYERS = random.randint(2, 50)
+        if NUMBER_OF_LAYERS * NUMBER_OF_STATES < 30:
+            RUN_MAIN = True
+        else:
+            RUN_MAIN = False
+        if NUMBER_OF_LAYERS <= 25:
+            RUN_BRUTEFORCE = True
+        else:
+            RUN_BRUTEFORCE = False
         trans, start, accepting, info = (
             sample_edges_uniform_over_counts(
                 NUMBER_OF_STATES, NUMBER_OF_LAYERS, seed=seed
