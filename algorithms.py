@@ -18,7 +18,7 @@ class MainFPRAS:
         n: int,
         epsilon: Fraction,
         delta: Fraction = Fraction(1 / math.e),
-        debug: bool = False,
+        debug: str = "None",
         progress_bar: bool = True,
     ):
         self.dag = dag
@@ -39,7 +39,7 @@ class MainFPRAS:
         )
         self.debug = debug
         self.progress_bar = progress_bar
-        if self.debug:
+        if self.debug != "None":
             tqdm.write(f"Max tries: {self.max_tries}, k: {self.k}")
         self.num_of_words = 2 * self.k**7
         self.np_alpha = np.empty(self.n + 1, dtype=object)
@@ -164,7 +164,7 @@ class MainFPRAS:
             return dag.simulate(word).astype(np.uint8)
 
         def words_to_count(
-            generator, batch_size, batch, layer, i, layer_states, debug=False
+            generator, batch_size, batch, layer, i, layer_states, debug="None"
         ) -> np.ndarray | None:
             """
             Counts the words in the generator.
@@ -242,7 +242,7 @@ class MainFPRAS:
                 8
                 + min_size_fraction  # 8 Bytes for object array overhead and minimal fraction size
             ) * 2**j  # 2^j items in powerset for layer l
-        if self.debug:
+        if self.debug != "None":
             tqdm.write(
                 f"Projected np_alpha size: {projected_np_alpha_size / 1024**2} MB"
             )
@@ -293,7 +293,7 @@ class MainFPRAS:
                         self.dag.m
                     )  # Adjust batch size based on available memory
                     number_of_batches = math.ceil(self.num_of_words / batch_size)
-                    if self.debug:
+                    if self.debug == "Full":
                         tqdm.write(
                             f"Batch size: {batch_memory_limit} bytes ({(batch_memory_limit / 1024**3):.2f} GB)"
                         )
@@ -346,7 +346,7 @@ class MainFPRAS:
                             self.np_alpha[layer][np_alpha_index] += Fraction(
                                 ni_alpha * counts[index], self.num_of_words
                             )
-        if self.debug:
+        if self.debug == "Full":
             for layer in range(self.n + 1):
                 tqdm.write(f"\nLayer {layer}:\n{self.np_alpha[layer]}")
         self.np_alpha[self.n][1] = Fraction(
@@ -362,13 +362,14 @@ class DependentFPRAS:
         n: int,
         epsilon: float,
         delta: float,
-        debug: bool = False,
+        debug: str = "None",
         progress_bar: bool = True,
     ):
         self.dag = dag
         if not self.dag.m:
             self.empty = True
         else:
+            self.max_size = 0
             self.empty = False
             k = epsilon / (1 + epsilon)
             self.n = n
@@ -378,13 +379,7 @@ class DependentFPRAS:
             self.ns_nt = self.n_s * self.n_t
             self.theta = 16 * self.ns_nt * n * (1 + k) * self.dag.m
             self.p = None
-            if debug:
-                tqdm.write(
-                    f"theta: {self.theta}, size: {self.theta * self.dag.m * 2 / 1024**3} GB"
-                )
-            self.available_processes = min(
-                self.n_t, max(1, multiprocessing.cpu_count() - 1)
-            )
+            self.available_processes = min(self.n_t, multiprocessing.cpu_count())
             self.n_t_per_process = [
                 a.tolist()
                 for a in np.array_split(np.arange(self.n_t), self.available_processes)
@@ -405,7 +400,7 @@ class DependentFPRAS:
             self.s_r_new_sizes = None
             self.debug = debug
             self.progress_bar = progress_bar
-            if self.debug:
+            if self.debug != "None":
                 tqdm.write(f"ns_nt: {self.ns_nt}, n_s: {self.n_s}, n_t: {self.n_t}")
 
     def __del__(self):
@@ -432,7 +427,7 @@ class DependentFPRAS:
         if self.empty:
             return 0
         # Implement the logic for running the Dependent FPRAS
-        if self.debug:
+        if self.debug != "None":
             tqdm.write(f"Times rerun: {self.n_u}")
         est = []
         try:
@@ -447,7 +442,7 @@ class DependentFPRAS:
                 else range(self.n_u)
             ):
                 est.append(self.count_nfa_core(run_number))
-            return statistics.median(est)
+            return statistics.median(est), round(self.max_size / (1024**3), 2)
         finally:
             self._cleanup_shm()
 
@@ -470,7 +465,7 @@ class DependentFPRAS:
             layer_states = self.dag.states[i].nonzero()[0]
             self.s_r_new = np.empty((2, layer_states.shape[0] * self.n_t), dtype=object)
             self.s_r_new_sizes = np.zeros(self.s_r_new.shape, dtype=int)
-            if self.debug and not run_number:
+            if self.debug == "Full" and not run_number:
                 tqdm.write(f"Layer {i}, States: {layer_states}")
 
             for idq, q in enumerate(layer_states):
@@ -483,7 +478,7 @@ class DependentFPRAS:
             numerator=self.p[1, self.dag.accept_states[0]].denominator,
             denominator=self.p[1, self.dag.accept_states[0]].numerator,
         )
-        if self.debug:
+        if self.debug != "None":
             tqdm.write(f"Run {run_number} complete. Result: {float(res)}")
         return res
 
@@ -534,6 +529,8 @@ class DependentFPRAS:
             self.s_r.fill(0)  # Every set S contains the empty word (word 0 in Cache)
 
         elif i == self.dag.n:
+            if self.debug != "None":
+                tqdm.write(f"Max memory used: {self.max_size / (1024**3):.2f} GB")
             return
         else:
             states = self.dag.states[i]
@@ -619,7 +616,7 @@ class DependentFPRAS:
             self.s_r[:] = new_s_r_data
             del new_s_r_data
 
-            if self.debug and not run_number:
+            if self.debug == "Full":
                 tqdm.write(
                     f"Cache size for layer {i}: {self.cache.nbytes / (1024 * 1024 * 1024):.2f} GB"
                 )
@@ -632,6 +629,13 @@ class DependentFPRAS:
                 tqdm.write(
                     f"Total size for layer {i}: {(self.cache.nbytes + self.s_r.nbytes + self.offsets.nbytes) / (1024 * 1024 * 1024):.2f} GB"
                 )
+            elif self.debug == "Minimal":
+                if self.max_size < (
+                    self.cache.nbytes + self.s_r.nbytes + self.offsets.nbytes
+                ):
+                    self.max_size = (
+                        self.cache.nbytes + self.s_r.nbytes + self.offsets.nbytes
+                    )
 
     def estimate_and_sample(
         self,
@@ -659,10 +663,10 @@ class DependentFPRAS:
             for pred_state in all_pred_states
         }
         p_q = np.min(p_pred_states)
-        generator = Parallel(
+        ret = Parallel(
             n_jobs=self.available_processes,
             batch_size="auto",
-            return_as="generator_unordered",
+            return_as="list",
             temp_folder=None,
             max_nbytes=None,
         )(
@@ -691,7 +695,7 @@ class DependentFPRAS:
         s_r_dach = np.empty((2, self.n_t), dtype=object)
         m_j = np.zeros((self.n_t), dtype=Fraction)
         idx = 0
-        for s_nt_dach_list in generator:
+        for s_nt_dach_list in ret:
             for s_nt_dach in s_nt_dach_list:
                 s_r_dach[:, idx] = s_nt_dach
                 m_j[idx] = (s_nt_dach[0].shape[0] + s_nt_dach[1].shape[0]) * factor
@@ -789,7 +793,7 @@ class DependentFPRAS:
 
 class BruteForce:
     def __init__(
-        self, dag: DAG, n: int, debug: bool = False, progress_bar: bool = True
+        self, dag: DAG, n: int, debug: str = "None", progress_bar: bool = True
     ):
         self._dag = dag
         self._empty = True if not self._dag.m else False
