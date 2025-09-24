@@ -1,4 +1,3 @@
-# log_run.py
 import sqlite3
 from fractions import Fraction
 from decimal import Decimal, getcontext
@@ -24,6 +23,7 @@ def log_run(
     max_size: float,
     algo: str,
     time_sec: float,
+    system: str = "My PC",
     db_path="results.db",
 ):
     # normalize to Decimal for log; store string for exactness
@@ -48,20 +48,17 @@ def log_run(
         algo=str(algo),
         log2_exact=log2_decimal(ex),
         log2_algo_res=log2_decimal(ap),
+        system=str(system),
     )
 
     con = sqlite3.connect(db_path)
     con.execute(
         """
         INSERT INTO runs
-        (M, M2, N, seed, epsilon, delta, exact, algo_res, ratio, max_size, time_sec, algo, log2_exact, log2_algo_res)
-        VALUES (:M,:M2,:N,:seed,:epsilon,:delta,:exact,:algo_res,:ratio,:max_size,:time_sec,:algo,:log2_exact,:log2_algo_res)
+        (M, M2, N, seed, epsilon, delta, exact, algo_res, ratio, max_size, time_sec, algo, log2_exact, log2_algo_res, system)
+        VALUES (:M,:M2,:N,:seed,:epsilon,:delta,:exact,:algo_res,:ratio,:max_size,:time_sec,:algo,:log2_exact,:log2_algo_res,:system)
     """,
         row,
     )
     con.commit()
     con.close()
-
-
-# Example usage from your experiment script:
-# log_run(M, M2, N, exact_value, approx_value, ratio_value, size_bytes, elapsed_seconds, "FPRAS-v1")

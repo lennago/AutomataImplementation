@@ -1,3 +1,5 @@
+"""Module containing the FPRAS algorithms and Bruteforce algorithm to approximate L^n(NFA)."""
+
 import math
 import statistics
 import random
@@ -12,6 +14,11 @@ from nfa import DAG
 
 
 class MainFPRAS:
+    """
+    FPRAS from Arenas et al., "#NFA admits an FPRAS: Efficient Enumeration, Counting,
+    and Uniform Generation for Logspace Classes"
+    """
+
     def __init__(
         self,
         dag: DAG,
@@ -425,7 +432,7 @@ class DependentFPRAS:
         Runs the Dependent FPRAS on the given input string and returns whether it accepts or rejects.
         """
         if self.empty:
-            return 0
+            return 0, 0.0
         # Implement the logic for running the Dependent FPRAS
         if self.debug != "None":
             tqdm.write(f"Times rerun: {self.n_u}")
@@ -472,7 +479,7 @@ class DependentFPRAS:
                 self.estimate_and_sample(q=q, layer=i, idq=idq)
                 sample_count += np.sum(self.s_r[q])
                 if sample_count >= self.theta:
-                    return 0
+                    return 0, 0.0
             self.compute_cache(i, run_number)
         res = Fraction(
             numerator=self.p[1, self.dag.accept_states[0]].denominator,

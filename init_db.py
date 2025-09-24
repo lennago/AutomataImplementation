@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS algorithms (
   name      TEXT    UNIQUE NOT NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS runs (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -28,7 +27,8 @@ CREATE TABLE IF NOT EXISTS runs (
   algo      TEXT    NOT NULL REFERENCES algorithms(name) ON DELETE CASCADE,
 
   log2_exact  REAL  NOT NULL,
-  log2_algo_res REAL  NOT NULL
+  log2_algo_res REAL  NOT NULL,
+  system    TEXT    NOT NULL DEFAULT 'My PC'
 );
 
 INSERT OR IGNORE INTO algorithms (name) VALUES ('DependentFPRAS'), ('MainFPRAS'), ('BruteForce');
@@ -99,6 +99,8 @@ if __name__ == "__main__":
 
     algo = ["DependentFPRAS"] * 9
 
+    system = ["MY PC"] * 9
+
     for i, _ in enumerate(M):
         log_run(
             M=M[i],
@@ -113,4 +115,5 @@ if __name__ == "__main__":
             max_size=max_size[i],
             time_sec=time_sec[i],
             algo=algo[i],
+            system=system[i],
         )

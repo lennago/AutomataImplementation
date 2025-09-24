@@ -254,7 +254,7 @@ if __name__ == "__main__":
             RUN_MAIN = True
         else:
             RUN_MAIN = False
-        if NUMBER_OF_LAYERS <= 25:
+        if NUMBER_OF_LAYERS <= 30:
             RUN_BRUTEFORCE = True
         else:
             RUN_BRUTEFORCE = False
@@ -270,13 +270,6 @@ if __name__ == "__main__":
         print("NFA generation info:")
         for key in info.keys():
             print(f"{key}: {info[key]}")
-        nfa = NFA(
-            num_states=NUMBER_OF_STATES,
-            transitions=trans,
-            start_states=[start],
-            accept_states=accepting,
-        )
-        dag = DAG(nfa, NUMBER_OF_LAYERS)
         from_count = int(
             round(
                 exact_fraction_edges(
