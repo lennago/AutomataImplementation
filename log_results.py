@@ -23,7 +23,7 @@ def log_run(
     max_size: float,
     algo: str,
     time_sec: float,
-    system: str = "My PC",
+    system: str = "My Laptop",
     db_path="results.db",
 ):
     # normalize to Decimal for log; store string for exactness
