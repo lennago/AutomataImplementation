@@ -411,7 +411,7 @@ def sample_edges_uniform_over_counts(
 # ---------- Example ----------
 if __name__ == "__main__":
     from nfa import NFA, DAG
-    from algorithms import BruteForceParallel
+    from algorithms import BruteForce
 
     # uniform-over-counts example at tiny m,n
     m, n = 2, 2
@@ -430,4 +430,4 @@ if __name__ == "__main__":
         round(exact_fraction_edges(m, n, trans, accepts, start) * (1 << n))
     )
     print("exact count:", from_count)
-    print(f"BruteForceParallel result: {BruteForceParallel(dag, n).run()}")
+    print(f"BruteForceParallel result: {BruteForce(dag, n).run()}")

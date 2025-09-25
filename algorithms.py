@@ -479,7 +479,7 @@ class DependentFPRAS:
                 self.estimate_and_sample(q=q, layer=i, idq=idq)
                 sample_count += np.sum(self.s_r[q])
                 if sample_count >= self.theta:
-                    return 0, 0.0
+                    return 0
             self.compute_cache(i, run_number)
         res = Fraction(
             numerator=self.p[1, self.dag.accept_states[0]].denominator,
