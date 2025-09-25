@@ -232,65 +232,84 @@ if __name__ == "__main__":
         exact_fraction_edges,
     )
 
-    NUMBER_OF_STATES = 10
-    NUMBER_OF_LAYERS = 10
+    # Configuration
+    # Either set fixed values (int or Fraction) or ranges ([min, max]) for random generation
+    NUMBER_OF_STATES = [2, 20]
+    NUMBER_OF_LAYERS = [2, 40]
     EPSILON = Fraction(1, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
+
     TARGET_COUNT = None
     SEED = None
     # Possible debug settings: ["None", "Full", "Minimal"]
     DEBUG = "Minimal"
     PROGRESS_BAR = True
     TEST_TIME = False
-    RUN_MAIN = False
-    RUN_BRUTEFORCE = True
+    RUN_MAIN_LIMIT = 20
+    RUN_BRUTEFORCE_LIMIT = 20
     while True:
         random_data = os.urandom(8)
         seed = int.from_bytes(random_data, byteorder="big") if SEED is None else SEED
-        NUMBER_OF_STATES = random.randint(2, 30)
-        NUMBER_OF_LAYERS = random.randint(2, 50)
-        if NUMBER_OF_LAYERS * NUMBER_OF_STATES < 30:
+        m = (
+            NUMBER_OF_STATES
+            if isinstance(NUMBER_OF_STATES, int)
+            else random.randint(NUMBER_OF_STATES[0], NUMBER_OF_STATES[1])
+        )
+        n = (
+            NUMBER_OF_LAYERS
+            if isinstance(NUMBER_OF_LAYERS, int)
+            else random.randint(NUMBER_OF_LAYERS[0], NUMBER_OF_LAYERS[1])
+        )
+        epsilon_main = (
+            EPSILON_MAIN
+            if isinstance(EPSILON_MAIN, Fraction)
+            else Fraction(
+                random.uniform(float(EPSILON_MAIN[0]), float(EPSILON_MAIN[1]))
+            )
+        )
+        epsilon = (
+            EPSILON
+            if isinstance(EPSILON, Fraction)
+            else Fraction(random.uniform(float(EPSILON[0]), float(EPSILON[1])))
+        )
+        delta = (
+            DELTA
+            if isinstance(DELTA, Fraction)
+            else Fraction(random.uniform(float(DELTA[0]), float(DELTA[1])))
+        )
+        if m * n < RUN_MAIN_LIMIT:
             RUN_MAIN = True
         else:
             RUN_MAIN = False
-        if NUMBER_OF_LAYERS <= 30:
+        if n <= RUN_BRUTEFORCE_LIMIT:
             RUN_BRUTEFORCE = True
         else:
             RUN_BRUTEFORCE = False
         trans, start, accepting, info = (
-            sample_edges_uniform_over_counts(
-                NUMBER_OF_STATES, NUMBER_OF_LAYERS, seed=seed
-            )
+            sample_edges_uniform_over_counts(m, n, seed=seed)
             if TARGET_COUNT is None
-            else tune_and_sample_edges(
-                NUMBER_OF_STATES, NUMBER_OF_LAYERS, TARGET_COUNT, seed=seed
-            )
+            else tune_and_sample_edges(m, n, TARGET_COUNT, seed=seed)
         )
         print("NFA generation info:")
         for key in info.keys():
             print(f"{key}: {info[key]}")
         from_count = int(
-            round(
-                exact_fraction_edges(
-                    NUMBER_OF_STATES, NUMBER_OF_LAYERS, trans, accepting, start
-                )
-                * (1 << NUMBER_OF_LAYERS)
-            )
+            round(exact_fraction_edges(m, n, trans, accepting, start) * (1 << n))
         )
         print(f"\nExact result: {from_count}\n")
         time.sleep(2)
         main(
-            states=NUMBER_OF_STATES,
+            states=m,
             transitions=trans,
             start_states=[start],
             accept_states=accepting,
-            n=NUMBER_OF_LAYERS,
-            M=NUMBER_OF_STATES,
+            n=n,
+            M=m,
             exact=from_count,
-            epsilon_main=EPSILON_MAIN,
-            epsilon=EPSILON,
-            delta=DELTA,
+            epsilon_main=epsilon_main,
+            epsilon=epsilon,
+            delta=delta,
             test_time=TEST_TIME,
             seed=seed,
             debug=DEBUG,
