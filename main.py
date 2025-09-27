@@ -245,7 +245,7 @@ if __name__ == "__main__":
     DEBUG = "Minimal"
     PROGRESS_BAR = True
     TEST_TIME = False
-    RUN_MAIN_LIMIT = 30
+    RUN_MAIN_LIMIT = 40
     RUN_BRUTEFORCE_LIMIT = 30
     while True:
         random_data = os.urandom(8)
@@ -260,6 +260,22 @@ if __name__ == "__main__":
             if isinstance(NUMBER_OF_LAYERS, int)
             else random.randint(NUMBER_OF_LAYERS[0], NUMBER_OF_LAYERS[1])
         )
+
+        trans, start, accepting, info = (
+            sample_edges_uniform_over_counts(m, n, seed=seed)
+            if TARGET_COUNT is None
+            else tune_and_sample_edges(m, n, TARGET_COUNT, seed=seed)
+        )
+        nfa_temp = NFA(
+            num_states=m,
+            transitions=trans,
+            start_states=[start],
+            accept_states=accepting,
+            debug=False,
+        )
+        nfa_temp.minimize()
+        dag_temp = DAG(nfa_temp, n)
+
         epsilon_main = (
             EPSILON_MAIN
             if isinstance(EPSILON_MAIN, Fraction)
@@ -277,7 +293,7 @@ if __name__ == "__main__":
             if isinstance(DELTA, Fraction)
             else Fraction(random.uniform(float(DELTA[0]), float(DELTA[1])))
         )
-        if m * n < RUN_MAIN_LIMIT:
+        if dag_temp.m * n < RUN_MAIN_LIMIT:
             RUN_MAIN = True
         else:
             RUN_MAIN = False
@@ -285,11 +301,6 @@ if __name__ == "__main__":
             RUN_BRUTEFORCE = True
         else:
             RUN_BRUTEFORCE = False
-        trans, start, accepting, info = (
-            sample_edges_uniform_over_counts(m, n, seed=seed)
-            if TARGET_COUNT is None
-            else tune_and_sample_edges(m, n, TARGET_COUNT, seed=seed)
-        )
         print("NFA generation info:")
         for key in info.keys():
             print(f"{key}: {info[key]}")
