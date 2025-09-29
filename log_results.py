@@ -14,7 +14,7 @@ def log_run(
     M: int,
     M2: int,
     N: int,
-    seed: int,
+    seed: int | str,
     epsilon: Fraction,
     delta: Fraction,
     exact: int,
@@ -24,7 +24,7 @@ def log_run(
     algo: str,
     time_sec: float,
     system: str = "My Laptop",
-    db_path="results.db",
+    db_path="results_laptop.db",
 ):
     # normalize to Decimal for log; store string for exactness
     ex = Decimal(str(exact))

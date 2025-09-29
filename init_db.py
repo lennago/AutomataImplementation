@@ -37,8 +37,8 @@ CREATE INDEX IF NOT EXISTS idx_runs_algo_n   ON runs(algo, N);
 CREATE INDEX IF NOT EXISTS idx_runs_created  ON runs(created_at);
 """
 
-con = sqlite3.connect("results.db")
+con = sqlite3.connect("results_laptop.db")
 con.executescript(DDL)
 con.commit()
 con.close()
-print("Initialized results.db")
+print("Initialized results_laptop.db")

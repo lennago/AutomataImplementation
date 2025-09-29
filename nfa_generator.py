@@ -31,7 +31,7 @@ def calibrate_p(
     alpha: float = 0.5,
     p_lo: Optional[float] = None,
     p_hi: Optional[float] = None,
-    tol: float = 1e-4,
+    tol: float = 1e-3,
     max_iter: int = 60,
 ) -> float:
     assert 0 < m and 0 <= n
