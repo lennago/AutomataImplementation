@@ -31,7 +31,7 @@ def calibrate_p(
     alpha: float = 0.5,
     p_lo: Optional[float] = None,
     p_hi: Optional[float] = None,
-    tol: float = 1e-4,
+    tol: float = 1e-3,
     max_iter: int = 60,
 ) -> float:
     assert 0 < m and 0 <= n
@@ -221,9 +221,9 @@ def tune_and_sample_edges(
     *,
     alpha: float = 0.5,
     degree: str = "bernoulli",
-    tolerance: float = 0.03,
+    tolerance: float = 0.001,
     T: int = 5000,
-    max_tries: int = 8,
+    max_tries: int = 25,
     seed: Optional[int] = None,
     lam: Optional[float] = None,
     start: int = 0,
@@ -315,8 +315,8 @@ def sample_edges_uniform_over_counts(
     accept_count: Optional[int] = None,
     lam: Optional[float] = None,
     start: int = 0,
-    tolerance: float = 0.03,
-    max_tries: int = 20,
+    tolerance: float = 0.001,
+    max_tries: int = 25,
 ) -> Tuple[List[Transition], int, Set[int], Dict]:
     """
     Choose an integer target k uniformly from {0,1,...,2^n}, then attempt to generate

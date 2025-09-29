@@ -14,7 +14,7 @@ def log_run(
     M: int,
     M2: int,
     N: int,
-    seed: int,
+    seed: int | str,
     epsilon: Fraction,
     delta: Fraction,
     exact: int,

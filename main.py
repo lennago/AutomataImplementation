@@ -1,4 +1,6 @@
+from decimal import Decimal
 import os
+import random
 from timeit import timeit
 from fractions import Fraction
 from typing import List, Tuple, Optional
@@ -11,16 +13,18 @@ from algorithms import (
 from nfa import NFA, DAG
 from log_results import log_run
 
+TRANSITION = Tuple[int, int, int]  # (from_state, symbol, to_state)
+NFA_TYPE = Tuple[
+    int, List[TRANSITION], List[int], List[int]
+]  # (m, transitions, starts, accepts)
+
 
 def main(
-    states: int,
-    transitions: List[Tuple[int, int, int]],
-    start_states: List[int],
-    accept_states: List[int],
+    dag: DAG,
     n: int,
     M: int,
     exact: int,
-    seed: int,
+    seed: int | str,
     epsilon_main: Fraction = Fraction(9, 10),
     epsilon: Fraction = Fraction(1, 10),
     delta: Fraction = Fraction(1, 4),
@@ -30,34 +34,7 @@ def main(
     RUN_MAIN: bool = False,
     RUN_BRUTEFORCE: bool = False,
 ):
-    nfa = NFA(
-        num_states=states,
-        transitions=transitions,
-        start_states=start_states,
-        accept_states=accept_states,
-    )
     seperator = "\n" * 3
-    if not nfa.num_states:
-        print("Language of NFA is empty.")
-        return
-    if not (0 < epsilon < 1):
-        raise ValueError("Epsilon must be in the range (0, 1).")
-    if not (0 < delta < 1):
-        raise ValueError("Delta must be in the range (0, 1).")
-
-    nfa.minimize()
-    dag = DAG(nfa, n)
-    print(f"DAG has {dag.m} states per layer and {dag.n} layers.")
-    print(f"DAG is {'sparse' if dag.sparse else 'dense'}.")
-    if debug:
-        for layer in range(dag.states.shape[0]):
-            print(f"Layer {layer}: {dag.states[layer].nonzero()[0]}")
-        print()
-        for m in range(dag.m):
-            for symbol in range(2):
-                print(
-                    f"Transitions from state {m} via {symbol}: {dag.transition_matrices[symbol][m].nonzero()[0]}"
-                )
     print(f"\nStart time: {time.strftime('%H:%M:%S', time.localtime())}\n")
     if test_time:
         RUNS_BruteForce = 1000
@@ -223,20 +200,151 @@ def dependentFPRAS_wrapper(
         )
 
 
-if __name__ == "__main__":
-    # Example usage
-    import random
+def run_main_helper(
+    m: int | Tuple[int, int],
+    n: int | Tuple[int, int],
+    epsilon: Fraction | Tuple[Fraction, Fraction],
+    epsilon_main: Fraction | Tuple[Fraction, Fraction],
+    delta: Fraction | Tuple[Fraction, Fraction],
+    seed: Optional[int | str] = None,
+    provided_nfa: Optional[NFA_TYPE] = None,
+    run_main_limit: int = 40,
+    run_bruteforce_limit: int = 30,
+    target_count: Optional[int] = None,
+    debug: str = "None",
+    progress_bar: bool = True,
+    test_time: bool = False,
+):
     from nfa_generator import (
         tune_and_sample_edges,
         sample_edges_uniform_over_counts,
         exact_fraction_edges,
     )
+    from log_results import log2_decimal
 
+    if isinstance(n, tuple):
+        n = random.randint(n[0], n[1])
+    if isinstance(epsilon, tuple):
+        epsilon = Fraction(random.uniform(float(epsilon[0]), float(epsilon[1])))
+    if isinstance(epsilon_main, tuple):
+        epsilon_main = Fraction(
+            random.uniform(float(epsilon_main[0]), float(epsilon_main[1]))
+        )
+    if isinstance(delta, tuple):
+        delta = Fraction(random.uniform(float(delta[0]), float(delta[1])))
+
+    if not (0 < epsilon < 1):
+        raise ValueError("Epsilon must be in the range (0, 1).")
+    if not (0 < epsilon_main < 1):
+        raise ValueError("Epsilon_main must be in the range (0, 1).")
+    if not (0 < delta < 1):
+        raise ValueError("Delta must be in the range (0, 1).")
+
+    if isinstance(seed, str):
+        if provided_nfa is None:
+            print("If seed is a string, NFA must be provided.")
+            return
+        if provided_nfa[0] != m:
+            print("Provided NFA does not match the provided m.")
+            return
+        m, transitions, starts, accepts = provided_nfa
+        nfa = NFA(
+            m, transitions, starts, accepts, debug=False if debug == "None" else True
+        )
+        trans = []
+        for symbol, trans_mat in enumerate(nfa.transition_matrices):
+            if nfa.sparse:
+                trans_mat = trans_mat.todense()
+            for from_state, to_state in zip(*trans_mat.nonzero()):
+                trans.append((int(from_state), symbol, int(to_state)))
+        from_count = int(
+            round(
+                exact_fraction_edges(
+                    nfa.num_states,
+                    n,
+                    trans,
+                    [int(nfa.accept_states[0])],
+                    int(nfa.start_states[0]),
+                )
+                * (1 << n)
+            )
+        )
+    else:
+        if seed is None:
+            random_data = os.urandom(8)
+            seed = int.from_bytes(random_data, byteorder="big")
+        if isinstance(m, tuple):
+            m = random.randint(m[0], m[1])
+        trans, start, accepting, info = (
+            sample_edges_uniform_over_counts(m, n, seed=seed)
+            if target_count is None
+            else tune_and_sample_edges(m, n, target_count, seed=seed)
+        )
+        nfa = NFA(
+            m,
+            trans,
+            [start],
+            accepting,
+            debug=False if debug == "None" else True,
+        )
+        print("NFA generation info:")
+        for key in info.keys():
+            print(f"{key}: {info[key]}")
+        from_count = int(
+            round(exact_fraction_edges(m, n, trans, accepting, start) * (1 << n))
+        )
+    print(f"\nExact result: {from_count}, log_2:{log2_decimal(Decimal(from_count))}\n")
+    time.sleep(2)  # Give user time to read exact result
+    if not nfa.num_states:
+        print("Language of NFA is empty.")
+        return
+    nfa.minimize()
+    dag = DAG(nfa, n)
+    if dag.m * n < run_main_limit:
+        run_main = True
+    else:
+        run_main = False
+    if n <= run_bruteforce_limit:
+        run_bruteforce = True
+    else:
+        run_bruteforce = False
+    if debug is not None:
+        print(f"DAG has {dag.m} states per layer and {dag.n} layers.")
+        print(f"DAG is {'sparse' if dag.sparse else 'dense'}.")
+        for layer in range(dag.states.shape[0]):
+            print(f"Layer {layer}: {dag.states[layer].nonzero()[0]}")
+        print()
+        for q in range(dag.m):
+            for symbol in range(2):
+                print(
+                    f"Transitions from state {q} via {symbol}: {dag.transition_matrices[symbol][q].nonzero()[0]}"
+                )
+        print(
+            f"Epsilon: {float(epsilon):.6f}, Epsilon Main: {float(epsilon_main):.6f}, Delta: {float(delta):.6f}"
+        )
+    main(
+        dag=dag,
+        n=n,
+        M=m,
+        exact=from_count,
+        seed=seed,
+        epsilon_main=epsilon_main,
+        epsilon=epsilon,
+        delta=delta,
+        test_time=test_time,
+        debug=debug,
+        progress_bar=progress_bar,
+        RUN_MAIN=run_main,
+        RUN_BRUTEFORCE=run_bruteforce,
+    )
+
+
+if __name__ == "__main__":
     # Configuration
-    # Either set fixed values (int or Fraction) or ranges ([min, max]) for random generation
-    NUMBER_OF_STATES = [2, 30]
-    NUMBER_OF_LAYERS = [2, 50]
-    EPSILON = Fraction(1, 10)
+    # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
+    NUMBER_OF_STATES = 10
+    NUMBER_OF_LAYERS = 100
+    EPSILON = (Fraction(1, 10), Fraction(9, 10))
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
     TARGET_COUNT = None
@@ -248,82 +356,18 @@ if __name__ == "__main__":
     RUN_MAIN_LIMIT = 40
     RUN_BRUTEFORCE_LIMIT = 30
     while True:
-        random_data = os.urandom(8)
-        seed = int.from_bytes(random_data, byteorder="big") if SEED is None else SEED
-        m = (
-            NUMBER_OF_STATES
-            if isinstance(NUMBER_OF_STATES, int)
-            else random.randint(NUMBER_OF_STATES[0], NUMBER_OF_STATES[1])
-        )
-        n = (
-            NUMBER_OF_LAYERS
-            if isinstance(NUMBER_OF_LAYERS, int)
-            else random.randint(NUMBER_OF_LAYERS[0], NUMBER_OF_LAYERS[1])
-        )
-
-        trans, start, accepting, info = (
-            sample_edges_uniform_over_counts(m, n, seed=seed)
-            if TARGET_COUNT is None
-            else tune_and_sample_edges(m, n, TARGET_COUNT, seed=seed)
-        )
-        nfa_temp = NFA(
-            num_states=m,
-            transitions=trans,
-            start_states=[start],
-            accept_states=accepting,
-            debug=False,
-        )
-        nfa_temp.minimize()
-        dag_temp = DAG(nfa_temp, n)
-
-        epsilon_main = (
-            EPSILON_MAIN
-            if isinstance(EPSILON_MAIN, Fraction)
-            else Fraction(
-                random.uniform(float(EPSILON_MAIN[0]), float(EPSILON_MAIN[1]))
-            )
-        )
-        epsilon = (
-            EPSILON
-            if isinstance(EPSILON, Fraction)
-            else Fraction(random.uniform(float(EPSILON[0]), float(EPSILON[1])))
-        )
-        delta = (
-            DELTA
-            if isinstance(DELTA, Fraction)
-            else Fraction(random.uniform(float(DELTA[0]), float(DELTA[1])))
-        )
-        if dag_temp.m * n < RUN_MAIN_LIMIT:
-            RUN_MAIN = True
-        else:
-            RUN_MAIN = False
-        if n <= RUN_BRUTEFORCE_LIMIT:
-            RUN_BRUTEFORCE = True
-        else:
-            RUN_BRUTEFORCE = False
-        print("NFA generation info:")
-        for key in info.keys():
-            print(f"{key}: {info[key]}")
-        from_count = int(
-            round(exact_fraction_edges(m, n, trans, accepting, start) * (1 << n))
-        )
-        print(f"\nExact result: {from_count}\n")
-        time.sleep(2)
-        main(
-            states=m,
-            transitions=trans,
-            start_states=[start],
-            accept_states=accepting,
-            n=n,
-            M=m,
-            exact=from_count,
-            epsilon_main=epsilon_main,
-            epsilon=epsilon,
-            delta=delta,
-            test_time=TEST_TIME,
-            seed=seed,
+        run_main_helper(
+            m=NUMBER_OF_STATES,
+            n=NUMBER_OF_LAYERS,
+            epsilon=EPSILON,
+            epsilon_main=EPSILON_MAIN,
+            delta=DELTA,
+            seed=SEED,
+            provided_nfa=None,
+            run_main_limit=RUN_MAIN_LIMIT,
+            run_bruteforce_limit=RUN_BRUTEFORCE_LIMIT,
+            target_count=TARGET_COUNT,
             debug=DEBUG,
             progress_bar=PROGRESS_BAR,
-            RUN_MAIN=RUN_MAIN,
-            RUN_BRUTEFORCE=RUN_BRUTEFORCE,
+            test_time=TEST_TIME,
         )
