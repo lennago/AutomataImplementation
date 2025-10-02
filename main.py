@@ -342,8 +342,8 @@ def run_main_helper(
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = 10
-    NUMBER_OF_LAYERS = (2, 60)
+    NUMBER_OF_STATES = (2, 10)
+    NUMBER_OF_LAYERS = (2, 100)
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
@@ -354,8 +354,8 @@ if __name__ == "__main__":
     DEBUG = "Minimal"
     PROGRESS_BAR = True
     TEST_TIME = False
-    RUN_MAIN_LIMIT = 25
-    RUN_BRUTEFORCE_LIMIT = 25
+    RUN_MAIN_LIMIT = 30
+    RUN_BRUTEFORCE_LIMIT = 26
     while True:
         run_main_helper(
             m=NUMBER_OF_STATES,
