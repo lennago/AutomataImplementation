@@ -883,7 +883,6 @@ class BruteForcePowerset:
             unique_next_states_set, indices = np.unique(
                 next_states_set, axis=0, return_inverse=True
             )
-            print(unique_next_states_set, indices)
             cur_states_set = unique_next_states_set
             cur_counts = np.zeros(unique_next_states_set.shape[0], dtype=object)
             for count_idx, idx in enumerate(indices):

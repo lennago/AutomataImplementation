@@ -1,5 +1,4 @@
 import sqlite3
-from log_results import log_run
 
 DDL = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -23,7 +22,7 @@ CREATE TABLE IF NOT EXISTS runs (
 
   log2_exact  REAL  NOT NULL,
   log2_algo_res REAL  NOT NULL,
-  system    TEXT    NOT NULL DEFAULT 'My PC'
+  system    TEXT    NOT NULL DEFAULT 'My Laptop'
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_algo_n   ON runs(algo, N);
