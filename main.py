@@ -12,7 +12,7 @@ from algorithms import (
     BruteForcePowerset,
 )
 from nfa import NFA, DAG
-from log_results import log_run
+from log_results import log_run, log2_decimal
 
 TRANSITION = Tuple[int, int, int]  # (from_state, symbol, to_state)
 NFA_TYPE = Tuple[
@@ -24,7 +24,6 @@ def main(
     dag: DAG,
     n: int,
     M: int,
-    exact: int,
     seed: int | str,
     epsilon_main: Fraction = Fraction(9, 10),
     epsilon: Fraction = Fraction(1, 10),
@@ -34,14 +33,18 @@ def main(
     progress_bar: bool = True,
     run_main: bool = False,
     run_bruteforce: bool = False,
-    run_bruteforce_powerset: bool = False,
 ):
     seperator = "\n" * 3
     print(f"\nStart time: {time.strftime('%H:%M:%S', time.localtime())}\n")
-    if run_bruteforce_powerset:
-        print(
-            f"Time taken by BruteForce Powerset: {timeit(lambda: BruteForcePowerset_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
-        )
+    exact = BruteForcePowerset_wrapper(
+        dag=dag,
+        n=n,
+        M=M,
+        seed=seed,
+        printing=True,
+        debug=debug,
+        progress_bar=progress_bar,
+    )
     print(
         f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
     )
@@ -92,7 +95,6 @@ def BruteForcePowerset_wrapper(
     dag: DAG,
     n: int,
     M: int,
-    exact: int,
     seed: int,
     printing: bool = True,
     debug: str = "None",
@@ -108,17 +110,16 @@ def BruteForcePowerset_wrapper(
         seed=seed,
         epsilon=Fraction(0, 1),
         delta=Fraction(0, 1),
-        exact=exact,
+        exact=res,
         algo_res=res,
-        ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
+        ratio=1.0,
         max_size=0.0,
         time_sec=time.time() - start,
         algo="BruteForcePowerset",
     )
     if printing:
-        print(
-            f"BruteForcePowerset algorithm result: {res} (Factor from exact: {float(res / exact):.6f}, should be 1.000000)"
-        )
+        print(f"\nExact result: {res}, log_2:{log2_decimal(Decimal(res))}\n")
+    return res
 
 
 def mainFPRAS_wrapper(
@@ -212,7 +213,6 @@ def run_main_helper(
     provided_nfa: Optional[NFA_TYPE] = None,
     run_main_limit: int = 40,
     run_bruteforce_limit: int = 30,
-    run_bruteforce_powerset_limit: int = 1000,
     target_count: Optional[int] = None,
     debug: str = "None",
     progress_bar: bool = True,
@@ -220,9 +220,7 @@ def run_main_helper(
     from nfa_generator import (
         tune_and_sample_edges,
         sample_edges_uniform_over_counts,
-        exact_fraction_edges,
     )
-    from log_results import log2_decimal
 
     if isinstance(n, tuple):
         n = random.randint(n[0], n[1])
@@ -264,18 +262,6 @@ def run_main_helper(
                 trans_mat = trans_mat.todense()
             for from_state, to_state in zip(*trans_mat.nonzero()):
                 trans.append((int(from_state), symbol, int(to_state)))
-        from_count = int(
-            round(
-                exact_fraction_edges(
-                    nfa.num_states,
-                    n,
-                    trans,
-                    [int(nfa.accept_states[0])],
-                    int(nfa.start_states[0]),
-                )
-                * (1 << n)
-            )
-        )
     else:
         if seed is None:
             random_data = os.urandom(8)
@@ -296,12 +282,7 @@ def run_main_helper(
         )
         print("NFA generation info:")
         for key in info.keys():
-            print(f"{key}: {info[key]}")
-        from_count = int(
-            round(exact_fraction_edges(m, n, trans, accepting, start) * (1 << n))
-        )
-    print(f"\nExact result: {from_count}, log_2:{log2_decimal(Decimal(from_count))}\n")
-    time.sleep(2)  # Give user time to read exact result
+            print(f"{key}: {info[key]}")  # Give user time to read exact result
     if not nfa.num_states:
         print("Language of NFA is empty.")
         return
@@ -315,10 +296,6 @@ def run_main_helper(
         run_bruteforce = True
     else:
         run_bruteforce = False
-    if dag.m <= run_bruteforce_powerset_limit:
-        run_bruteforce_powerset = True
-    else:
-        run_bruteforce_powerset = False
     if debug is not None:
         print(f"DAG has {dag.m} states per layer and {dag.n} layers.")
         print(f"DAG is {'sparse' if dag.sparse else 'dense'}.")
@@ -337,7 +314,6 @@ def run_main_helper(
         dag=dag,
         n=n,
         M=m,
-        exact=from_count,
         seed=seed,
         epsilon_main=epsilon_main,
         epsilon=epsilon,
@@ -347,7 +323,6 @@ def run_main_helper(
         progress_bar=progress_bar,
         run_main=run_main,
         run_bruteforce=run_bruteforce,
-        run_bruteforce_powerset=run_bruteforce_powerset,
     )
 
 
@@ -368,7 +343,6 @@ if __name__ == "__main__":
     TEST_TIME = False
     RUN_MAIN_LIMIT = 40
     RUN_BRUTEFORCE_LIMIT = 25
-    RUN_BRUTEFORCE_POWERSET_LIMIT = 1000
     while True:
         run_main_helper(
             m=NUMBER_OF_STATES,
@@ -381,7 +355,6 @@ if __name__ == "__main__":
             provided_nfa=None,
             run_main_limit=RUN_MAIN_LIMIT,
             run_bruteforce_limit=RUN_BRUTEFORCE_LIMIT,
-            run_bruteforce_powerset_limit=RUN_BRUTEFORCE_POWERSET_LIMIT,
             target_count=TARGET_COUNT,
             debug=DEBUG,
             progress_bar=PROGRESS_BAR,
