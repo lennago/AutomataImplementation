@@ -853,5 +853,46 @@ class BruteForce:
         return count
 
 
+class BruteForcePowerset:
+    def __init__(
+        self, dag: DAG, n: int, debug: str = "None", progress_bar: bool = True
+    ):
+        self._dag = dag
+        self._empty = True if not self._dag.m else False
+        self._n = n
+        self._debug = debug
+        self._progress_bar = progress_bar
+
+    def run(self):
+        """
+        Runs the BruteForcePowerset algorithm on the given input string and
+        returns whether it accepts or rejects.
+        """
+        if self._empty:
+            return 0
+        cur_states_set = self._dag.states[0].reshape(1, -1)
+        cur_counts = np.ones(1, dtype=object)
+        for layer in range(self._n):
+            next_states_set = self._dag.simulate_one(cur_states_set, 0, layer)
+            next_states_set = np.append(
+                next_states_set,
+                self._dag.simulate_one(cur_states_set, 1, layer),
+                axis=0,
+            )
+            prev_counts = np.append(cur_counts, cur_counts, axis=0)
+            unique_next_states_set, indices = np.unique(
+                next_states_set, axis=0, return_inverse=True
+            )
+            print(unique_next_states_set, indices)
+            cur_states_set = unique_next_states_set
+            cur_counts = np.zeros(unique_next_states_set.shape[0], dtype=object)
+            for count_idx, idx in enumerate(indices):
+                cur_counts[idx] += prev_counts[count_idx]
+        idx_accept = np.where(cur_states_set[:, self._dag.accept_states[0]])[0]
+        if idx_accept.size == 0:
+            return 0
+        return cur_counts[idx_accept[0]]
+
+
 if __name__ == "__main__":
     pass

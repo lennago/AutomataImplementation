@@ -2,11 +2,6 @@ import sqlite3
 from log_results import log_run
 
 DDL = """
-CREATE TABLE IF NOT EXISTS algorithms (
-  id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  name      TEXT    UNIQUE NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS runs (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -24,14 +19,12 @@ CREATE TABLE IF NOT EXISTS runs (
 
   max_size  REAL,
   time_sec  REAL    NOT NULL,
-  algo      TEXT    NOT NULL REFERENCES algorithms(name) ON DELETE CASCADE,
+  algo      TEXT    NOT NULL,
 
   log2_exact  REAL  NOT NULL,
   log2_algo_res REAL  NOT NULL,
   system    TEXT    NOT NULL DEFAULT 'My PC'
 );
-
-INSERT OR IGNORE INTO algorithms (name) VALUES ('DependentFPRAS'), ('MainFPRAS'), ('BruteForce');
 
 CREATE INDEX IF NOT EXISTS idx_runs_algo_n   ON runs(algo, N);
 CREATE INDEX IF NOT EXISTS idx_runs_created  ON runs(created_at);

@@ -9,6 +9,7 @@ from algorithms import (
     BruteForce,
     MainFPRAS,
     DependentFPRAS,
+    BruteForcePowerset,
 )
 from nfa import NFA, DAG
 from log_results import log_run
@@ -28,63 +29,29 @@ def main(
     epsilon_main: Fraction = Fraction(9, 10),
     epsilon: Fraction = Fraction(1, 10),
     delta: Fraction = Fraction(1, 4),
-    test_time: bool = False,
     debug: str = "None",
     progress_bar: bool = True,
-    RUN_MAIN: bool = False,
-    RUN_BRUTEFORCE: bool = False,
+    run_main: bool = False,
+    run_bruteforce: bool = False,
+    run_bruteforce_powerset: bool = False,
 ):
     seperator = "\n" * 3
     print(f"\nStart time: {time.strftime('%H:%M:%S', time.localtime())}\n")
-    if test_time:
-        RUNS_BruteForce = 1000
-        RUNS_DEPENDENT_FPRAS = 10
-        time_BruteForce = timeit(
-            lambda: BruteForce_wrapper(
-                dag,
-                n,
-                M=M,
-                exact=exact,
-                seed=seed,
-                printing=False,
-                debug=False,
-                progress_bar=False,
-            ),
-            number=RUNS_BruteForce,
-        )
+    if run_bruteforce_powerset:
         print(
-            f"Time taken by BruteForce Parallel for {RUNS_BruteForce} runs: {time_BruteForce:.4f} seconds\n{time_BruteForce / RUNS_BruteForce:.4f} seconds per run{seperator}"
+            f"Time taken by BruteForce Powerset: {timeit(lambda: BruteForcePowerset_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
         )
-        time_dependant = timeit(
-            lambda: dependentFPRAS_wrapper(
-                dag,
-                n,
-                M,
-                epsilon,
-                delta,
-                exact=exact,
-                seed=seed,
-                printing=False,
-                debug="None",
-                progress_bar=False,
-            ),
-            number=RUNS_DEPENDENT_FPRAS,
-        )
+    print(
+        f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
+    )
+    if run_bruteforce:
         print(
-            f"Time taken by Dependent FPRAS RAM for {RUNS_DEPENDENT_FPRAS} runs: {time_dependant:.4f} seconds\n{time_dependant / RUNS_DEPENDENT_FPRAS:.4f} seconds per run{seperator}"
+            f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar),number=1)} seconds{seperator}"
         )
-    else:
+    if run_main:
         print(
-            f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
+            f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
         )
-        if RUN_BRUTEFORCE:
-            print(
-                f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar),number=1)} seconds{seperator}"
-            )
-        if RUN_MAIN:
-            print(
-                f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
-            )
 
 
 def BruteForce_wrapper(
@@ -117,6 +84,39 @@ def BruteForce_wrapper(
     if printing:
         print(
             f"BruteForce algorithm result: {res} (Factor from exact: {float(res / exact):.6f}, should be 1.000000)"
+        )
+
+
+def BruteForcePowerset_wrapper(
+    dag: DAG,
+    n: int,
+    M: int,
+    exact: int,
+    seed: int,
+    printing: bool = True,
+    debug: str = "None",
+    progress_bar: bool = True,
+):
+    """Wrapper function for the BruteForcePowerset algorithm."""
+    start = time.time()
+    res = BruteForcePowerset(dag, n, debug=debug, progress_bar=progress_bar).run()
+    log_run(
+        M=M,
+        M2=dag.m,
+        N=n,
+        seed=seed,
+        epsilon=Fraction(0, 1),
+        delta=Fraction(0, 1),
+        exact=exact,
+        algo_res=res,
+        ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
+        max_size=0.0,
+        time_sec=time.time() - start,
+        algo="BruteForcePowerset",
+    )
+    if printing:
+        print(
+            f"BruteForcePowerset algorithm result: {res} (Factor from exact: {float(res / exact):.6f}, should be 1.000000)"
         )
 
 
@@ -210,10 +210,10 @@ def run_main_helper(
     provided_nfa: Optional[NFA_TYPE] = None,
     run_main_limit: int = 40,
     run_bruteforce_limit: int = 30,
+    run_bruteforce_powerset_limit: int = 1000,
     target_count: Optional[int] = None,
     debug: str = "None",
     progress_bar: bool = True,
-    test_time: bool = False,
 ):
     from nfa_generator import (
         tune_and_sample_edges,
@@ -308,6 +308,10 @@ def run_main_helper(
         run_bruteforce = True
     else:
         run_bruteforce = False
+    if dag.m <= run_bruteforce_powerset_limit:
+        run_bruteforce_powerset = True
+    else:
+        run_bruteforce_powerset = False
     if debug is not None:
         print(f"DAG has {dag.m} states per layer and {dag.n} layers.")
         print(f"DAG is {'sparse' if dag.sparse else 'dense'}.")
@@ -331,19 +335,19 @@ def run_main_helper(
         epsilon_main=epsilon_main,
         epsilon=epsilon,
         delta=delta,
-        test_time=test_time,
         debug=debug,
         progress_bar=progress_bar,
-        RUN_MAIN=run_main,
-        RUN_BRUTEFORCE=run_bruteforce,
+        run_main=run_main,
+        run_bruteforce=run_bruteforce,
+        run_bruteforce_powerset=run_bruteforce_powerset,
     )
 
 
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = (2, 10)
-    NUMBER_OF_LAYERS = (2, 100)
+    NUMBER_OF_STATES = 5
+    NUMBER_OF_LAYERS = 10
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
@@ -353,9 +357,9 @@ if __name__ == "__main__":
     # Possible debug settings: ["None", "Full", "Minimal"]
     DEBUG = "Minimal"
     PROGRESS_BAR = True
-    TEST_TIME = False
     RUN_MAIN_LIMIT = 30
     RUN_BRUTEFORCE_LIMIT = 26
+    RUN_BRUTEFORCE_POWERSET_LIMIT = 1000
     while True:
         run_main_helper(
             m=NUMBER_OF_STATES,
@@ -367,8 +371,8 @@ if __name__ == "__main__":
             provided_nfa=None,
             run_main_limit=RUN_MAIN_LIMIT,
             run_bruteforce_limit=RUN_BRUTEFORCE_LIMIT,
+            run_bruteforce_powerset_limit=RUN_BRUTEFORCE_POWERSET_LIMIT,
             target_count=TARGET_COUNT,
             debug=DEBUG,
             progress_bar=PROGRESS_BAR,
-            test_time=TEST_TIME,
         )
