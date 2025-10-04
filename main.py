@@ -28,6 +28,7 @@ def main(
     epsilon_main: Fraction = Fraction(9, 10),
     epsilon: Fraction = Fraction(1, 10),
     delta: Fraction = Fraction(1, 4),
+    delta_main: Fraction = Fraction(9, 10),
     test_time: bool = False,
     debug: str = "None",
     progress_bar: bool = True,
@@ -83,7 +84,7 @@ def main(
             )
         if RUN_MAIN:
             print(
-                f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
+                f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta_main, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
             )
 
 
@@ -206,6 +207,7 @@ def run_main_helper(
     epsilon: Fraction | Tuple[Fraction, Fraction],
     epsilon_main: Fraction | Tuple[Fraction, Fraction],
     delta: Fraction | Tuple[Fraction, Fraction],
+    delta_main: Fraction | Tuple[Fraction, Fraction],
     seed: Optional[int | str] = None,
     provided_nfa: Optional[NFA_TYPE] = None,
     run_main_limit: int = 40,
@@ -232,13 +234,18 @@ def run_main_helper(
         )
     if isinstance(delta, tuple):
         delta = Fraction(random.uniform(float(delta[0]), float(delta[1])))
-
+    if isinstance(delta_main, tuple):
+        delta_main = Fraction(
+            random.uniform(float(delta_main[0]), float(delta_main[1]))
+        )
     if not (0 < epsilon < 1):
         raise ValueError("Epsilon must be in the range (0, 1).")
     if not (0 < epsilon_main < 1):
         raise ValueError("Epsilon_main must be in the range (0, 1).")
     if not (0 < delta < 1):
         raise ValueError("Delta must be in the range (0, 1).")
+    if not (0 < delta_main < 1):
+        raise ValueError("Delta_main must be in the range (0, 1).")
 
     if isinstance(seed, str):
         if provided_nfa is None:
@@ -331,6 +338,7 @@ def run_main_helper(
         epsilon_main=epsilon_main,
         epsilon=epsilon,
         delta=delta,
+        delta_main=delta_main,
         test_time=test_time,
         debug=debug,
         progress_bar=progress_bar,
@@ -342,11 +350,12 @@ def run_main_helper(
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = 10
-    NUMBER_OF_LAYERS = 100
+    NUMBER_OF_STATES = (2, 20)
+    NUMBER_OF_LAYERS = (2, 200)
     EPSILON = (Fraction(1, 10), Fraction(9, 10))
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
+    DELTA_MAIN = Fraction(9, 10)
     TARGET_COUNT = None
     SEED = None
     # Possible debug settings: ["None", "Full", "Minimal"]
@@ -354,7 +363,7 @@ if __name__ == "__main__":
     PROGRESS_BAR = True
     TEST_TIME = False
     RUN_MAIN_LIMIT = 40
-    RUN_BRUTEFORCE_LIMIT = 30
+    RUN_BRUTEFORCE_LIMIT = 25
     while True:
         run_main_helper(
             m=NUMBER_OF_STATES,
@@ -362,6 +371,7 @@ if __name__ == "__main__":
             epsilon=EPSILON,
             epsilon_main=EPSILON_MAIN,
             delta=DELTA,
+            delta_main=DELTA_MAIN,
             seed=SEED,
             provided_nfa=None,
             run_main_limit=RUN_MAIN_LIMIT,

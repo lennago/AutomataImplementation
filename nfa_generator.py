@@ -172,7 +172,11 @@ def estimate_fraction_edges(
 
 
 def exact_fraction_edges(
-    m: int, n: int, transitions: List[Transition], accepts: Set[int], start: int = 0
+    m: int,
+    n: int,
+    transitions: List[Transition],
+    accepts: Set[int],
+    start: Set[int] | int = {0},
 ) -> float:
     out0 = [0] * m
     out1 = [0] * m
@@ -181,7 +185,12 @@ def exact_fraction_edges(
             out0[u] |= 1 << v
         else:
             out1[u] |= 1 << v
-    start_mask = 1 << start
+    start_mask = 0
+    if isinstance(start, int):
+        start_mask |= 1 << start
+    else:
+        for s in start:
+            start_mask |= 1 << s
     accept_mask = 0
     for s in accepts:
         accept_mask |= 1 << s
