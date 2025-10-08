@@ -869,7 +869,7 @@ class BruteForcePowerset:
         returns whether it accepts or rejects.
         """
         if self._empty:
-            return 0
+            return 0, 0.0
         cur_states_set = self._dag.states[0].reshape(1, -1)
         cur_counts = np.ones(1, dtype=object)
         max_size = cur_states_set.nbytes
@@ -893,7 +893,7 @@ class BruteForcePowerset:
                 max_size = cur_size
         idx_accept = np.where(cur_states_set[:, self._dag.accept_states[0]])[0]
         if idx_accept.size == 0:
-            return 0
+            return 0, 0.0
         return cur_counts[idx_accept[0]], round(max_size / (1024**3), 2)
 
 
