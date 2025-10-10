@@ -894,7 +894,7 @@ class BruteForcePowerset:
         idx_accept = np.where(cur_states_set[:, self._dag.accept_states[0]])[0]
         if idx_accept.size == 0:
             return 0, 0.0
-        return cur_counts[idx_accept[0]], round(max_size / (1024**3), 2)
+        return cur_counts[idx_accept[0]], round(max_size / (1024**3), 4)
 
 
 if __name__ == "__main__":
