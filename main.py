@@ -102,7 +102,7 @@ def BruteForcePowerset_wrapper(
 ):
     """Wrapper function for the BruteForcePowerset algorithm."""
     start = time.time()
-    res = BruteForcePowerset(dag, n, debug=debug, progress_bar=progress_bar).run()
+    res, size = BruteForcePowerset(dag, n, debug=debug, progress_bar=progress_bar).run()
     log_run(
         M=M,
         M2=dag.m,
@@ -113,7 +113,7 @@ def BruteForcePowerset_wrapper(
         exact=res,
         algo_res=res,
         ratio=1.0,
-        max_size=0.0,
+        max_size=size,
         time_sec=time.time() - start,
         algo="BruteForcePowerset",
     )
@@ -329,8 +329,8 @@ def run_main_helper(
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = (2, 20)
-    NUMBER_OF_LAYERS = (2, 100)
+    NUMBER_OF_STATES = (2, 30)
+    NUMBER_OF_LAYERS = (2, 80)
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
