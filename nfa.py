@@ -224,8 +224,11 @@ class NFA:
             # Check if start or accept states are in this group
             has_start = np.any(np.isin(states, self.start_states))
             has_accept = np.any(np.isin(states, self.accept_states))
-
-            if not (has_start or has_accept):
+            if has_start:
+                states = np.delete(states, np.where(states == self.start_states[0])[0])
+            if has_accept:
+                states = np.delete(states, np.where(states == self.accept_states[0])[0])
+            if len(states) > 1:
                 filtered_states_to_merge.append(states)
 
         states_to_merge = filtered_states_to_merge
