@@ -181,8 +181,11 @@ class NFA:
 
     def _reduce_equals(self, outgoing: bool = True) -> bool:
         """
-        Reduces the NFA by merging equivalent states.
-        This method is not implemented in this version of the NFA class.
+        Merges equivalent states in the NFA.
+        Two states are considered equivalent if they have identical ingoing or outgoing
+        transition behavior.
+        Returns True if any states were merged, False otherwise.
+        This method modifies the NFA in place.
         """
         if self.num_states < 2:
             # Can't reduce less than 2 states
@@ -221,8 +224,11 @@ class NFA:
             # Check if start or accept states are in this group
             has_start = np.any(np.isin(states, self.start_states))
             has_accept = np.any(np.isin(states, self.accept_states))
-
-            if not (has_start or has_accept):
+            if has_start:
+                states = np.delete(states, np.where(states == self.start_states[0])[0])
+            if has_accept:
+                states = np.delete(states, np.where(states == self.accept_states[0])[0])
+            if len(states) > 1:
                 filtered_states_to_merge.append(states)
 
         states_to_merge = filtered_states_to_merge
@@ -288,8 +294,8 @@ class NFA:
 
     def minimize(self) -> None:
         """
-        Placeholder for NFA minimization.
-        This method is not implemented in this version of the NFA class.
+        Minimizes the NFA by merging equivalent states.
+        This is done by repeatedly applying the _reduce_equals method.
         """
         changed = True
         while changed:
