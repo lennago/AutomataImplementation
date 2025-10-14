@@ -329,8 +329,8 @@ def run_main_helper(
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = (2, 100)
-    NUMBER_OF_LAYERS = (2, 100)
+    NUMBER_OF_STATES = (40, 100)
+    NUMBER_OF_LAYERS = (2, 50)
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
