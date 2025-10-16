@@ -99,6 +99,7 @@ class MainFPRAS:
             :param layer: Current layer in the DAG.
             :param states: Current states in the DAG.
             :param phi: Probability threshold for sampling
+            :param max_tries: Maximum number of tries for sampling.
             """
             relevant_states_per_layer = dag.states[:layer]
             possible_predecessors = [
@@ -461,7 +462,7 @@ class DependentFPRAS:
         self.p = np.zeros((2, self.dag.m), dtype=Fraction)
         self.p[1, self.dag.start_states[0]] = Fraction(1)
         self.compute_cache(0, run_number)
-        sample_count = self.dag.m * self.ns_nt
+        sample_count = self.ns_nt
         for i in (
             tqdm(range(1, self.n + 1), desc="Processing layers", leave=False)
             if self.progress_bar
@@ -477,7 +478,9 @@ class DependentFPRAS:
 
             for idq, q in enumerate(layer_states):
                 self.estimate_and_sample(q=q, layer=i, idq=idq)
-                sample_count += np.sum(self.s_r[q])
+                sample_count += (
+                    self.offsets[(idq + 1) * self.n_t] - self.offsets[idq * self.n_t]
+                )
                 if sample_count >= self.theta:
                     return 0
             self.compute_cache(i, run_number)
