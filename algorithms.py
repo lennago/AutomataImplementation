@@ -478,8 +478,8 @@ class DependentFPRAS:
 
             for idq, q in enumerate(layer_states):
                 self.estimate_and_sample(q=q, layer=i, idq=idq)
-                sample_count += (
-                    self.offsets[(idq + 1) * self.n_t] - self.offsets[idq * self.n_t]
+                sample_count += np.sum(
+                    self.s_r_new_sizes[:, idq * self.n_t : (idq + 1) * self.n_t]
                 )
                 if sample_count >= self.theta:
                     return 0
