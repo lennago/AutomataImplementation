@@ -35,22 +35,24 @@ class MainFPRAS:
                 raise ValueError("DAG must have exactly one start state.")
             if len(self.dag.accept_states) != 1:
                 raise ValueError("DAG must have exactly one accept state.")
+            self.epsilon = epsilon
+            self.n = n
+            self.k = math.ceil(
+                (self.n * self.dag.m) / self.epsilon * math.log(1 / delta)
+            )
+            self.max_tries = math.ceil(
+                (2 + math.log(4) + (8 * math.log(self.k)))
+                / math.log((1 - math.e**-9) ** -1)
+            )
+            self.debug = debug
+            self.progress_bar = progress_bar
+            if self.debug != "None":
+                tqdm.write(f"Max tries: {self.max_tries}, k: {self.k}")
+            self.num_of_words = 2 * self.k**7
+            self.np_alpha = np.empty(self.n + 1, dtype=object)
+            self.available_processes = multiprocessing.cpu_count() - 1
         else:
             self.empty = True
-        self.epsilon = epsilon
-        self.n = n
-        self.k = math.ceil((self.n * self.dag.m) / self.epsilon * math.log(1 / delta))
-        self.max_tries = math.ceil(
-            (2 + math.log(4) + (8 * math.log(self.k)))
-            / math.log((1 - math.e**-9) ** -1)
-        )
-        self.debug = debug
-        self.progress_bar = progress_bar
-        if self.debug != "None":
-            tqdm.write(f"Max tries: {self.max_tries}, k: {self.k}")
-        self.num_of_words = 2 * self.k**7
-        self.np_alpha = np.empty(self.n + 1, dtype=object)
-        self.available_processes = multiprocessing.cpu_count() - 1
 
     def worker(
         self,
@@ -750,12 +752,11 @@ class DependentFPRAS:
             s: np.ndarray, pred_states: list, cache: np.ndarray
         ) -> np.ndarray:
             """
-            Computes the union of two states in the NFA.
-            This method should implement the logic to compute the union of two states.
-            :param q: The first state in the NFA.
-            :param layer: The layer of the state.
-            :param s: The set from which to compute the union.
-            :return: The set s_acute which is the union of set s for state q.
+            Computes the union of the sets in s based on the pred_states and cache.
+            :param s: The sets to compute the union of.
+            :param pred_states: The predecessor states.
+            :param cache: The cache to use for the computation.
+            :return: The union of the sets in s.
             """
 
             s_acute = np.empty((2), dtype=object)

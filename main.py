@@ -87,7 +87,7 @@ def BruteForce_wrapper(
     )
     if printing:
         print(
-            f"BruteForce algorithm result: {res} (Factor from exact: {float(res / exact):.6f}, should be 1.000000)"
+            f"BruteForce algorithm result: {res} (Factor from exact: {(float(res / exact) if exact != 0 else float(res + 1 / 1)):.6f}, should be 1.000000)"
         )
 
 
@@ -158,7 +158,7 @@ def mainFPRAS_wrapper(
     if printing:
         print(f"Correct result: {exact}")
         print(
-            f"Main FPRAS algorithm result: {res} (Factor from exact: {float(res / exact):.6f})"
+            f"Main FPRAS algorithm result: {res} (Factor from exact: {(float(res / exact) if exact != 0 else float(res + 1 / 1)):.6f})"
         )
 
 
@@ -198,7 +198,7 @@ def dependentFPRAS_wrapper(
     if printing:
         print(f"Correct result: {exact}")
         print(
-            f"Dependent FPRAS algorithm result: {int(res)} (Factor from exact: {float(res / exact):.6f})"
+            f"Dependent FPRAS algorithm result: {int(res)} (Factor from exact: {(float(res / exact) if exact != 0 else float(res + 1 / 1)):.6f})"
         )
 
 
@@ -329,7 +329,7 @@ def run_main_helper(
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = (40, 100)
+    NUMBER_OF_STATES = (2, 200)
     NUMBER_OF_LAYERS = (2, 50)
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
