@@ -213,7 +213,6 @@ def run_main_helper(
     provided_nfa: Optional[NFA_TYPE] = None,
     run_main_limit: int = 40,
     run_bruteforce_limit: int = 30,
-    target_count: Optional[int] = None,
     debug: str = "None",
     progress_bar: bool = True,
 ):
@@ -267,10 +266,8 @@ def run_main_helper(
             seed = int.from_bytes(random_data, byteorder="big")
         if isinstance(m, tuple):
             m = random.randint(m[0], m[1])
-        trans, start, accepting, info = (
-            sample_edges_uniform_over_counts(m, n, seed=seed)
-            if target_count is None
-            else tune_and_sample_edges(m, n, target_count, seed=seed)
+        trans, start, accepting, info = sample_edges_uniform_over_counts(
+            m, n, seed=seed
         )
         nfa = NFA(
             m,
@@ -334,7 +331,6 @@ if __name__ == "__main__":
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
     DELTA_MAIN = Fraction(9, 10)
-    TARGET_COUNT = None
     SEED = None
     # Possible debug settings: ["None", "Full", "Minimal"]
     DEBUG = "Minimal"
@@ -354,7 +350,6 @@ if __name__ == "__main__":
             provided_nfa=None,
             run_main_limit=RUN_MAIN_LIMIT,
             run_bruteforce_limit=RUN_BRUTEFORCE_LIMIT,
-            target_count=TARGET_COUNT,
             debug=DEBUG,
             progress_bar=PROGRESS_BAR,
         )
