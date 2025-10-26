@@ -218,7 +218,6 @@ def run_main_helper(
     progress_bar: bool = True,
 ):
     from nfa_generator import (
-        tune_and_sample_edges,
         sample_edges_uniform_over_counts,
     )
 
