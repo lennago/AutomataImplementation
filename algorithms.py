@@ -35,22 +35,25 @@ class MainFPRAS:
                 raise ValueError("DAG must have exactly one start state.")
             if len(self.dag.accept_states) != 1:
                 raise ValueError("DAG must have exactly one accept state.")
+
+            self.epsilon = epsilon
+            self.n = n
+            self.k = math.ceil(
+                (self.n * self.dag.m) / self.epsilon * math.log(1 / delta)
+            )
+            self.max_tries = math.ceil(
+                (2 + math.log(4) + (8 * math.log(self.k)))
+                / math.log((1 - math.e**-9) ** -1)
+            )
+            self.debug = debug
+            self.progress_bar = progress_bar
+            if self.debug != "None":
+                tqdm.write(f"Max tries: {self.max_tries}, k: {self.k}")
+            self.num_of_words = 2 * self.k**7
+            self.np_alpha = np.empty(self.n + 1, dtype=object)
+            self.available_processes = multiprocessing.cpu_count() - 1
         else:
             self.empty = True
-        self.epsilon = epsilon
-        self.n = n
-        self.k = math.ceil((self.n * self.dag.m) / self.epsilon * math.log(1 / delta))
-        self.max_tries = math.ceil(
-            (2 + math.log(4) + (8 * math.log(self.k)))
-            / math.log((1 - math.e**-9) ** -1)
-        )
-        self.debug = debug
-        self.progress_bar = progress_bar
-        if self.debug != "None":
-            tqdm.write(f"Max tries: {self.max_tries}, k: {self.k}")
-        self.num_of_words = 2 * self.k**7
-        self.np_alpha = np.empty(self.n + 1, dtype=object)
-        self.available_processes = multiprocessing.cpu_count() - 1
 
     def worker(
         self,
