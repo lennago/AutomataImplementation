@@ -94,20 +94,17 @@ def sample_edges(
 def generate_nfa(
     m: int,
     n: int,
-    *,
-    alpha: float = 0.5,
     seed: Optional[int] = None,
-    accept_count: Optional[int] = None,
-    start: int = 0,
-    tolerance: float = 0.001,
-    max_tries: int = 25,
 ) -> Tuple[List[Transition], int, Set[int], Dict]:
     """
     Choose an integer target k uniformly from {0,1,...,2^n}, then attempt to generate
-    an NFA whose EXACT number of accepted words of length n equals k. Uses the exact
-    evaluator (n must be small enough). Falls back to the closest match within max_tries.
+    an NFA whose EXACT number of accepted words of length n equals k.
     Returns (transitions, start, accepts, info) with 'target_count' and 'exact_count'.
     """
+    start = 0
+    tolerance = 0.001
+    max_tries = 25
+    alpha = 0.5
     rng = random.Random(seed)
     total = 1 << n
     k_target = 1 + rng.randrange(total)  # Not interested in empty languages
@@ -122,7 +119,7 @@ def generate_nfa(
 
     for t in range(max_tries):
         transitions, s, accepts = sample_edges(
-            m, p, alpha, rng, start=start, accept_count=accept_count
+            m, p, alpha, rng, start=start, accept_count=None
         )
         data = {"transitions": transitions, "start": [s], "accepts": list(accepts)}
         with open("current.json", "w", encoding="utf-8") as f:
