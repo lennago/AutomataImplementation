@@ -28,6 +28,9 @@ def log_run(
     db_path="results_combined.db",
 ):
     # normalize to Decimal for log; store string for exactness
+    if exact == 0:
+        return
+    time_sec = max(time_sec, 0.0000001)
     ex = Decimal(str(exact))
     if algo_res < 2**23:
         ap = Decimal(float(algo_res))
@@ -52,7 +55,6 @@ def log_run(
         system=str(system),
         minimize_version=str(minimize_version),
     )
-
     con = sqlite3.connect(db_path)
     con.execute(
         """

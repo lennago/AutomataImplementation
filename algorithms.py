@@ -879,7 +879,11 @@ class BruteForcePowerset:
         cur_states_set = self._dag.states[0].reshape(1, -1)
         cur_counts = np.ones(1, dtype=object)
         max_size = cur_states_set.nbytes
-        for layer in range(self._n):
+        for layer in (
+            tqdm(range(self._n), desc="Processing layers")
+            if self._progress_bar
+            else range(self._n)
+        ):
             next_states_set = self._dag.simulate_one(cur_states_set, 0, layer)
             next_states_set = np.append(
                 next_states_set,

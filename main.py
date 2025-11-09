@@ -11,6 +11,9 @@ from algorithms import (
     DependentFPRAS,
     BruteForcePowerset,
 )
+from nfa_generator import (
+    generate_nfa,
+)
 from nfa import NFA, DAG
 from log_results import log_run, log2_decimal
 
@@ -216,10 +219,6 @@ def run_main_helper(
     debug: str = "None",
     progress_bar: bool = True,
 ):
-    from nfa_generator import (
-        sample_edges_uniform_over_counts,
-    )
-
     if isinstance(n, tuple):
         n = random.randint(n[0], n[1])
     if isinstance(epsilon, tuple):
@@ -266,9 +265,7 @@ def run_main_helper(
             seed = int.from_bytes(random_data, byteorder="big")
         if isinstance(m, tuple):
             m = random.randint(m[0], m[1])
-        trans, start, accepting, info = sample_edges_uniform_over_counts(
-            m, n, seed=seed
-        )
+        trans, start, accepting, info = generate_nfa(m, n, seed=seed)
         nfa = NFA(
             m,
             trans,

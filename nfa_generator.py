@@ -91,7 +91,7 @@ def sample_edges(
     return trans, start, accepts
 
 
-def sample_edges_uniform_over_counts(
+def generate_nfa(
     m: int,
     n: int,
     *,
