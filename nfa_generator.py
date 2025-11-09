@@ -5,10 +5,14 @@
 # No external deps.
 
 from __future__ import annotations
+import os
+import json
 from typing import List, Tuple, Set, Optional, Dict
-import math, random
+import math
+import random
 from nfa import NFA, DAG
 from main import BruteForcePowerset_wrapper
+
 
 Transition = Tuple[int, int, int]  # (u, a, v) with a in {0,1}
 
@@ -120,6 +124,9 @@ def sample_edges_uniform_over_counts(
         transitions, s, accepts = sample_edges(
             m, p, alpha, rng, start=start, accept_count=accept_count
         )
+        data = {"transitions": transitions, "start": [s], "accepts": list(accepts)}
+        with open("current.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
         nfa = NFA(m, transitions, [s], list(accepts), debug=False)
         nfa.minimize()
         dag = DAG(nfa, n)
@@ -133,6 +140,7 @@ def sample_edges_uniform_over_counts(
             )
             / total
         )
+        os.remove("current.json")
         k_exact = int(round(r_exact * total))
         gap = abs(k_exact - k_target)
         if gap < best_gap:
