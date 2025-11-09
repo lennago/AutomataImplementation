@@ -38,7 +38,9 @@ class MainFPRAS:
             self.epsilon = epsilon
             self.n = n
             self.k = math.ceil(
-                (self.n * self.dag.m) / self.epsilon * math.log(1 / delta)
+                (self.n * self.dag.m)
+                / self.epsilon
+                * (math.log(1 / delta) if delta < 1 / math.e else 1)
             )
             self.max_tries = math.ceil(
                 (2 + math.log(4) + (8 * math.log(self.k)))
