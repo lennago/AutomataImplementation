@@ -3,7 +3,7 @@
 Algorithms and tooling to count |L^n(NFA)| for a given nondeterministic finite automaton (NFA) and word length n. The project implements and evaluates:
 
 - MainFPRAS (from Arenas et al.)
-- DependentFPRAS (memory-optimized sampling-based estimator)
+- DependentFPRAS (from Meel et al.)
 - Baselines: BruteForce and BruteForcePowerset (exact via powerset dynamic programming)
 
 Core data structures are the NFA and its induced layered DAG (both in `nfa.py`). The primary entrypoint to run and evaluate algorithms is `run_main_helper` from `main.py`.
@@ -72,7 +72,6 @@ run_main_helper(
 - `nfa_generator.py` — Random NFA generator used by `run_main_helper`
 - `init_db.py` — Creates/initializes SQLite databases for logging results
 - `log_results.py` — Utility to log runs into `results_combined.db`
-- `merge_databases.py` — Helper to merge older result databases into the combined DB
 - `nfa_algorithms_analysis.ipynb`, `plots.ipynb` — Notebooks for analyzing logged runs and plotting
 - `requirements.txt` — Python dependencies for this project
 
@@ -156,8 +155,7 @@ Wrapper functions in `main.py` (used by `run_main_helper`) handle timing and log
 ## Results and analysis
 
 - Results are stored in `results_combined.db` (table `runs`) with columns: sizes (M, M2, N), parameters (epsilon, delta, seed), algorithm, timings, ratio, log2 values, etc. See `init_db.py` and `log_results.py`.
-- Use the notebooks `nfa_algorithms_analysis.ipynb` and `plots.ipynb` to explore and plot results.
-- `merge_databases.py` can import and normalize older DB files into `results_combined.db`.
+- Use the notebook `plots.ipynb` to explore and plot results.
 
 
 ## Notes and tips
