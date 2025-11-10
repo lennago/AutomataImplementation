@@ -95,6 +95,7 @@ def generate_nfa(
     m: int,
     n: int,
     seed: Optional[int] = None,
+    logging: bool = False,
 ) -> Tuple[List[Transition], int, Set[int], Dict]:
     """
     Choose an integer target k uniformly from {0,1,...,2^n}, then attempt to generate
@@ -134,6 +135,7 @@ def generate_nfa(
                 M=m,
                 seed=f"Gen {t}: {seed}",
                 printing=False,
+                logging=logging,
             )
             / total
         )

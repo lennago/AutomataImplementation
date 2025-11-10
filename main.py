@@ -11,9 +11,7 @@ from algorithms import (
     DependentFPRAS,
     BruteForcePowerset,
 )
-from nfa_generator import (
-    generate_nfa,
-)
+
 from nfa import NFA, DAG
 from log_results import log_run, log2_decimal
 
@@ -36,6 +34,7 @@ def main(
     progress_bar: bool = True,
     run_main: bool = False,
     run_bruteforce: bool = False,
+    logging: bool = False,
 ):
     seperator = "\n" * 3
     print(f"\nStart time: {time.strftime('%H:%M:%S', time.localtime())}\n")
@@ -47,17 +46,18 @@ def main(
         printing=True,
         debug=debug,
         progress_bar=progress_bar,
+        logging=logging,
     )
     print(
-        f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
+        f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging), number=1)} seconds{seperator}"
     )
     if run_bruteforce:
         print(
-            f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar),number=1)} seconds{seperator}"
+            f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging),number=1)} seconds{seperator}"
         )
     if run_main:
         print(
-            f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta_main, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar), number=1)} seconds{seperator}"
+            f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta_main, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging), number=1)} seconds{seperator}"
         )
 
 
@@ -70,24 +70,26 @@ def BruteForce_wrapper(
     printing: bool = True,
     debug: str = "None",
     progress_bar: bool = True,
+    logging: bool = False,
 ):
     """Wrapper function for the BruteForce_Parallel algorithm."""
     start = time.time()
     res = BruteForce(dag, n, debug=debug, progress_bar=progress_bar).run()
-    log_run(
-        M=M,
-        M2=dag.m,
-        N=n,
-        seed=seed,
-        epsilon=Fraction(0, 1),
-        delta=Fraction(0, 1),
-        exact=exact,
-        algo_res=res,
-        ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
-        max_size=0.0,
-        time_sec=time.time() - start,
-        algo="BruteForce",
-    )
+    if logging:
+        log_run(
+            M=M,
+            M2=dag.m,
+            N=n,
+            seed=seed,
+            epsilon=Fraction(0, 1),
+            delta=Fraction(0, 1),
+            exact=exact,
+            algo_res=res,
+            ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
+            max_size=0.0,
+            time_sec=time.time() - start,
+            algo="BruteForce",
+        )
     if printing:
         print(
             f"BruteForce algorithm result: {res} (Factor from exact: {(float(res / exact) if exact != 0 else float(res + 1 / 1)):.6f}, should be 1.000000)"
@@ -102,24 +104,26 @@ def BruteForcePowerset_wrapper(
     printing: bool = True,
     debug: str = "None",
     progress_bar: bool = True,
+    logging: bool = False,
 ):
     """Wrapper function for the BruteForcePowerset algorithm."""
     start = time.time()
     res, size = BruteForcePowerset(dag, n, debug=debug, progress_bar=progress_bar).run()
-    log_run(
-        M=M,
-        M2=dag.m,
-        N=n,
-        seed=seed,
-        epsilon=Fraction(0, 1),
-        delta=Fraction(0, 1),
-        exact=res,
-        algo_res=res,
-        ratio=1.0,
-        max_size=size,
-        time_sec=time.time() - start,
-        algo="BruteForcePowerset",
-    )
+    if logging:
+        log_run(
+            M=M,
+            M2=dag.m,
+            N=n,
+            seed=seed,
+            epsilon=Fraction(0, 1),
+            delta=Fraction(0, 1),
+            exact=res,
+            algo_res=res,
+            ratio=1.0,
+            max_size=size,
+            time_sec=time.time() - start,
+            algo="BruteForcePowerset",
+        )
     if printing:
         print(f"\nExact result: {res}, log_2:{log2_decimal(Decimal(res))}\n")
     return res
@@ -136,6 +140,7 @@ def mainFPRAS_wrapper(
     printing: bool = True,
     debug: str = "None",
     progress_bar: bool = True,
+    logging: bool = False,
 ):
     """
     Main algorithm wrapper function.
@@ -144,20 +149,21 @@ def mainFPRAS_wrapper(
     res = MainFPRAS(
         dag, n, epsilon, delta, debug=debug, progress_bar=progress_bar
     ).run()
-    log_run(
-        M=M,
-        M2=dag.m,
-        N=n,
-        seed=seed,
-        epsilon=epsilon,
-        delta=delta,
-        exact=exact,
-        algo_res=res,
-        ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
-        max_size=0.0,
-        time_sec=time.time() - start,
-        algo="MainFPRAS",
-    )
+    if logging:
+        log_run(
+            M=M,
+            M2=dag.m,
+            N=n,
+            seed=seed,
+            epsilon=epsilon,
+            delta=delta,
+            exact=exact,
+            algo_res=res,
+            ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
+            max_size=0.0,
+            time_sec=time.time() - start,
+            algo="MainFPRAS",
+        )
     if printing:
         print(f"Correct result: {exact}")
         print(
@@ -176,6 +182,7 @@ def dependentFPRAS_wrapper(
     printing: bool = True,
     debug: str = "None",
     progress_bar: bool = True,
+    logging: bool = False,
 ):
     """
     Wrapper function for the DependentFPRAS algorithm.
@@ -184,20 +191,21 @@ def dependentFPRAS_wrapper(
     res, max_size = DependentFPRAS(
         dag, n, epsilon, delta, debug=debug, progress_bar=progress_bar
     ).run()
-    log_run(
-        M=M,
-        M2=dag.m,
-        N=n,
-        seed=seed,
-        epsilon=epsilon,
-        delta=delta,
-        exact=exact,
-        algo_res=res,
-        ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
-        max_size=max_size,
-        time_sec=time.time() - start,
-        algo="DependentFPRAS",
-    )
+    if logging:
+        log_run(
+            M=M,
+            M2=dag.m,
+            N=n,
+            seed=seed,
+            epsilon=epsilon,
+            delta=delta,
+            exact=exact,
+            algo_res=res,
+            ratio=float(res / exact) if exact != 0 else float(res + 1 / 1),
+            max_size=max_size,
+            time_sec=time.time() - start,
+            algo="DependentFPRAS",
+        )
     if printing:
         print(f"Correct result: {exact}")
         print(
@@ -218,6 +226,7 @@ def run_main_helper(
     run_bruteforce_limit: int = 30,
     debug: str = "None",
     progress_bar: bool = True,
+    logging: bool = False,
 ):
     if isinstance(n, tuple):
         n = random.randint(n[0], n[1])
@@ -260,6 +269,10 @@ def run_main_helper(
             for from_state, to_state in zip(*trans_mat.nonzero()):
                 trans.append((int(from_state), symbol, int(to_state)))
     else:
+        from nfa_generator import (
+            generate_nfa,
+        )
+
         if seed is None:
             random_data = os.urandom(8)
             seed = int.from_bytes(random_data, byteorder="big")
@@ -335,6 +348,7 @@ if __name__ == "__main__":
     TEST_TIME = False
     RUN_MAIN_LIMIT = 40
     RUN_BRUTEFORCE_LIMIT = 25
+    LOGGING = True
     while True:
         run_main_helper(
             m=NUMBER_OF_STATES,
@@ -349,4 +363,5 @@ if __name__ == "__main__":
             run_bruteforce_limit=RUN_BRUTEFORCE_LIMIT,
             debug=DEBUG,
             progress_bar=PROGRESS_BAR,
+            logging=LOGGING,
         )
