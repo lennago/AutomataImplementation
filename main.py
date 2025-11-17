@@ -17,8 +17,8 @@ from log_results import log_run, log2_decimal
 
 TRANSITION = Tuple[int, int, int]  # (from_state, symbol, to_state)
 NFA_TYPE = Tuple[
-    int, List[TRANSITION], List[int], List[int]
-]  # (m, transitions, starts, accepts)
+    int, List[TRANSITION], List[int], List[int], int
+]  # (m, transitions, starts, accepts, alphabet_size)
 
 
 def main(
@@ -35,6 +35,7 @@ def main(
     run_main: bool = False,
     run_bruteforce: bool = False,
     logging: bool = False,
+    alphabet_size: int = 2,
 ):
     seperator = "\n" * 3
     print(f"\nStart time: {time.strftime('%H:%M:%S', time.localtime())}\n")
@@ -42,6 +43,7 @@ def main(
         dag=dag,
         n=n,
         M=M,
+        alphabet_size=alphabet_size,
         seed=seed,
         printing=True,
         debug=debug,
@@ -49,15 +51,15 @@ def main(
         logging=logging,
     )
     print(
-        f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag, n, M, epsilon, delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging), number=1)} seconds{seperator}"
+        f"Time taken by Dependent FPRAS: {timeit(lambda: dependentFPRAS_wrapper(dag=dag, n=n, M=M, epsilon=epsilon, delta=delta, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging, alphabet_size=alphabet_size), number=1)} seconds{seperator}"
     )
     if run_bruteforce:
         print(
-            f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag, n, M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging),number=1)} seconds{seperator}"
+            f"Time taken by BruteForce Parallel: {timeit(lambda: BruteForce_wrapper(dag=dag, n=n, M=M, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging, alphabet_size=alphabet_size),number=1)} seconds{seperator}"
         )
     if run_main:
         print(
-            f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag, n, M, epsilon_main, delta_main, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging), number=1)} seconds{seperator}"
+            f"Time taken by Main FPRAS: {timeit(lambda: mainFPRAS_wrapper(dag=dag, n=n, M=M, epsilon=epsilon_main, delta=delta_main, exact=exact, seed=seed, debug=debug, progress_bar=progress_bar, logging=logging, alphabet_size=alphabet_size), number=1)} seconds{seperator}"
         )
 
 
@@ -65,6 +67,7 @@ def BruteForce_wrapper(
     dag: DAG,
     n: int,
     M: int,
+    alphabet_size: int,
     exact: int,
     seed: int,
     printing: bool = True,
@@ -74,12 +77,14 @@ def BruteForce_wrapper(
 ):
     """Wrapper function for the BruteForce_Parallel algorithm."""
     start = time.time()
-    res = BruteForce(dag, n, debug=debug, progress_bar=progress_bar).run()
+    res = BruteForce(dag, dag.n, debug=debug, progress_bar=progress_bar).run()
     if logging:
         log_run(
             M=M,
             M2=dag.m,
             N=n,
+            N2=dag.n,
+            alphabet_size=alphabet_size,
             seed=seed,
             epsilon=Fraction(0, 1),
             delta=Fraction(0, 1),
@@ -100,6 +105,7 @@ def BruteForcePowerset_wrapper(
     dag: DAG,
     n: int,
     M: int,
+    alphabet_size: int,
     seed: int,
     printing: bool = True,
     debug: str = "None",
@@ -108,12 +114,16 @@ def BruteForcePowerset_wrapper(
 ):
     """Wrapper function for the BruteForcePowerset algorithm."""
     start = time.time()
-    res, size = BruteForcePowerset(dag, n, debug=debug, progress_bar=progress_bar).run()
+    res, size = BruteForcePowerset(
+        dag, dag.n, debug=debug, progress_bar=progress_bar
+    ).run()
     if logging:
         log_run(
             M=M,
-            M2=dag.m,
             N=n,
+            M2=dag.m,
+            N2=dag.n,
+            alphabet_size=alphabet_size,
             seed=seed,
             epsilon=Fraction(0, 1),
             delta=Fraction(0, 1),
@@ -133,6 +143,7 @@ def mainFPRAS_wrapper(
     dag: DAG,
     n: int,
     M: int,
+    alphabet_size: int,
     epsilon: Fraction,
     delta: Fraction,
     exact: int,
@@ -147,13 +158,15 @@ def mainFPRAS_wrapper(
     """
     start = time.time()
     res = MainFPRAS(
-        dag, n, epsilon, delta, debug=debug, progress_bar=progress_bar
+        dag, dag.n, epsilon, delta, debug=debug, progress_bar=progress_bar
     ).run()
     if logging:
         log_run(
             M=M,
             M2=dag.m,
             N=n,
+            N2=dag.n,
+            alphabet_size=alphabet_size,
             seed=seed,
             epsilon=epsilon,
             delta=delta,
@@ -175,6 +188,7 @@ def dependentFPRAS_wrapper(
     dag: DAG,
     n: int,
     M: int,
+    alphabet_size: int,
     epsilon: Fraction,
     delta: Fraction,
     exact: int,
@@ -189,13 +203,15 @@ def dependentFPRAS_wrapper(
     """
     start = time.time()
     res, max_size = DependentFPRAS(
-        dag, n, epsilon, delta, debug=debug, progress_bar=progress_bar
+        dag, dag.n, epsilon, delta, debug=debug, progress_bar=progress_bar
     ).run()
     if logging:
         log_run(
             M=M,
             M2=dag.m,
+            N2=dag.n,
             N=n,
+            alphabet_size=alphabet_size,
             seed=seed,
             epsilon=epsilon,
             delta=delta,
@@ -220,6 +236,7 @@ def run_main_helper(
     epsilon_main: Fraction | Tuple[Fraction, Fraction],
     delta: Fraction | Tuple[Fraction, Fraction],
     delta_main: Fraction | Tuple[Fraction, Fraction],
+    alphabet_size: int = 2,
     seed: Optional[int | str] = None,
     provided_nfa: Optional[NFA_TYPE] = None,
     run_main_limit: int = 40,
@@ -242,15 +259,13 @@ def run_main_helper(
         delta_main = Fraction(
             random.uniform(float(delta_main[0]), float(delta_main[1]))
         )
+    if isinstance(alphabet_size, tuple):
+        alphabet_size = random.randint(alphabet_size[0], alphabet_size[1])
 
-    if not (0 < epsilon < 1):
-        raise ValueError("Epsilon must be in the range (0, 1).")
-    if not (0 < epsilon_main < 1):
-        raise ValueError("Epsilon_main must be in the range (0, 1).")
-    if not (0 < delta < 1):
-        raise ValueError("Delta must be in the range (0, 1).")
-    if not (0 < delta_main < 1):
-        raise ValueError("Delta_main must be in the range (0, 1).")
+    assert 0 < epsilon < 1, "Epsilon must be in the range (0, 1)."
+    assert 0 < epsilon_main < 1, "Epsilon_main must be in the range (0, 1)."
+    assert 0 < delta < 1, "Delta must be in the range (0, 1)."
+    assert 0 < delta_main < 1, "Delta_main must be in the range (0, 1)."
     if isinstance(seed, str):
         if provided_nfa is None:
             print("If seed is a string, NFA must be provided.")
@@ -258,16 +273,15 @@ def run_main_helper(
         if provided_nfa[0] != m:
             print("Provided NFA does not match the provided m.")
             return
-        m, transitions, starts, accepts = provided_nfa
+        m, transitions, starts, accepts, alphabet_size = provided_nfa
         nfa = NFA(
-            m, transitions, starts, accepts, debug=False if debug == "None" else True
+            m,
+            transitions,
+            starts,
+            accepts,
+            alphabet_size=alphabet_size,
+            debug=False if debug == "None" else True,
         )
-        trans = []
-        for symbol, trans_mat in enumerate(nfa.transition_matrices):
-            if nfa.sparse:
-                trans_mat = trans_mat.todense()
-            for from_state, to_state in zip(*trans_mat.nonzero()):
-                trans.append((int(from_state), symbol, int(to_state)))
     else:
         from nfa_generator import (
             generate_nfa,
@@ -278,12 +292,15 @@ def run_main_helper(
             seed = int.from_bytes(random_data, byteorder="big")
         if isinstance(m, tuple):
             m = random.randint(m[0], m[1])
-        trans, start, accepting, info = generate_nfa(m, n, seed=seed)
+        trans, start, accepting, info = generate_nfa(
+            m, n, seed=seed, alphabet_size=alphabet_size, logging=logging
+        )
         nfa = NFA(
-            m,
-            trans,
-            [start],
-            accepting,
+            num_states=m,
+            transitions=trans,
+            start_states=[start],
+            alphabet_size=alphabet_size,
+            accept_states=accepting,
             debug=False if debug == "None" else True,
         )
         print("NFA generation info:")
@@ -293,8 +310,9 @@ def run_main_helper(
         print("Language of NFA is empty.")
         return
     nfa.minimize()
+    nfa.reduce_to_boolean_alphabet()
     dag = DAG(nfa, n)
-    if dag.m * n < run_main_limit:
+    if dag.m * dag.n < run_main_limit:
         run_main = True
     else:
         run_main = False
@@ -329,14 +347,17 @@ def run_main_helper(
         progress_bar=progress_bar,
         run_main=run_main,
         run_bruteforce=run_bruteforce,
+        logging=logging,
+        alphabet_size=alphabet_size,
     )
 
 
 if __name__ == "__main__":
     # Configuration
     # Either set fixed values (int or Fraction) or tuple (min, max) for random generation
-    NUMBER_OF_STATES = (2, 200)
+    NUMBER_OF_STATES = (2, 10)
     NUMBER_OF_LAYERS = (2, 50)
+    ALPHABET_SIZE = 64
     EPSILON = Fraction(9, 10)
     EPSILON_MAIN = Fraction(9, 10)
     DELTA = Fraction(9, 10)
@@ -353,6 +374,7 @@ if __name__ == "__main__":
         run_main_helper(
             m=NUMBER_OF_STATES,
             n=NUMBER_OF_LAYERS,
+            alphabet_size=ALPHABET_SIZE,
             epsilon=EPSILON,
             epsilon_main=EPSILON_MAIN,
             delta=DELTA,

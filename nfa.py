@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import scipy.sparse as sp
 
@@ -9,21 +10,25 @@ class NFA:
         transitions: list[tuple[int, int | str, int]],
         start_states: list[int],
         accept_states: list[int],
+        alphabet_size: int = 2,
         debug: bool = True,
     ):
         self.num_states = num_states + 2
         self.start_states = np.array(start_states, dtype=int)
         self.accept_states = np.array(accept_states, dtype=int)
         self.debug = debug
-        self.alphabet = [0, 1, 2]  # 0 and 1 for symbols, 2 for epsilon
+        self.alphabet = list(range(alphabet_size)) + [
+            alphabet_size
+        ]  # symbols + epsilon
+        self.alphabet_factor = 1
         self.transition_matrices = np.zeros(
-            (3, self.num_states, self.num_states), dtype=bool
+            (alphabet_size + 1, self.num_states, self.num_states), dtype=bool
         )
-        self.transition_matrices[2] = np.identity(self.num_states, dtype=bool)
+        self.transition_matrices[-1] = np.identity(self.num_states, dtype=bool)
         self._initialize_transitions(transitions)
         self._create_single_start_and_accept()
         density = np.count_nonzero(self.transition_matrices) / (
-            self.num_states * self.num_states * 2
+            self.num_states * self.num_states * alphabet_size
         )
         self.sparse = density < 0.05
         if self.sparse:
@@ -32,11 +37,12 @@ class NFA:
                 dtype=object,
             )
             self.transition_matrices_backwards = np.array(
-                [mat.T.tocsr() for mat in self.transition_matrices[:2]], dtype=object
+                [mat.T.tocsr() for mat in self.transition_matrices],
+                dtype=object,
             )
         else:
             self.transition_matrices_backwards = np.array(
-                [mat.T for mat in self.transition_matrices[:2]], dtype=bool
+                [mat.T for mat in self.transition_matrices], dtype=bool
             )
         self._remove_unreachable_and_not_accepting_states()
 
@@ -69,21 +75,27 @@ class NFA:
         reachable[self.start_states] = True
         accepting[self.accept_states] = True
         if self.sparse:
-            forwards_transitions = (
-                self.transition_matrices[0] + self.transition_matrices[1]
-            )
-            backwards_transitions = (
-                self.transition_matrices_backwards[0]
-                + self.transition_matrices_backwards[1]
-            )
+            forwards_transitions = self.transition_matrices[0]
+            for i in range(1, len(self.alphabet)):
+                forwards_transitions = (
+                    forwards_transitions + self.transition_matrices[i]
+                )
+            backwards_transitions = self.transition_matrices_backwards[0]
+            for i in range(1, len(self.alphabet)):
+                backwards_transitions = (
+                    backwards_transitions + self.transition_matrices_backwards[i]
+                )
         else:
-            forwards_transitions = (
-                self.transition_matrices[0] | self.transition_matrices[1]
-            )
-            backwards_transitions = (
-                self.transition_matrices_backwards[0]
-                | self.transition_matrices_backwards[1]
-            )
+            forwards_transitions = self.transition_matrices[0]
+            for i in range(1, len(self.alphabet)):
+                forwards_transitions = (
+                    forwards_transitions | self.transition_matrices[i]
+                )
+            backwards_transitions = self.transition_matrices_backwards[0]
+            for i in range(1, len(self.alphabet)):
+                backwards_transitions = (
+                    backwards_transitions | self.transition_matrices_backwards[i]
+                )
         for _ in range(n):
             old_reachable = reachable.copy()
             old_accepting = accepting.copy()
@@ -127,9 +139,9 @@ class NFA:
         new_start_state = self.num_states - 2
         new_accept_state = self.num_states - 1
         for old_start_state in self.start_states:
-            self.transition_matrices[2][new_start_state, old_start_state] = True
+            self.transition_matrices[-1][new_start_state, old_start_state] = True
         for old_accept_state in self.accept_states:
-            self.transition_matrices[2][old_accept_state, new_accept_state] = True
+            self.transition_matrices[-1][old_accept_state, new_accept_state] = True
         self.start_states = np.array([new_start_state], dtype=int)
         self.accept_states = np.array([new_accept_state], dtype=int)
         self._eliminate_epsilon_transitions()
@@ -138,24 +150,24 @@ class NFA:
         """
         Eliminates epsilon transitions from the NFA.
         """
-        density = np.count_nonzero(self.transition_matrices[2]) / (
+        density = np.count_nonzero(self.transition_matrices[-1]) / (
             self.num_states * self.num_states
         )
         sparse = density < 0.05
         epsilon_closure = self._get_epsilon_closure(sparse=sparse)
-        for i in range(2):
+        for i in range(len(self.alphabet) - 1):
             cur_matrix = self.transition_matrices[i]
             self.transition_matrices[i] = epsilon_closure @ cur_matrix @ epsilon_closure
         self.transition_matrices = self.transition_matrices[
-            :2
+            :-1
         ]  # Keep only the non-epsilon matrices
-        self.alphabet.remove(2)  # Remove the epsilon transition matrix
+        self.alphabet.pop()  # Remove the epsilon transition matrix
 
     def _get_epsilon_closure(self, sparse: bool = False) -> np.ndarray:
         """
         Computes the epsilon closure for each state in the NFA.
         """
-        epsilon_matrix = self.transition_matrices[2]
+        epsilon_matrix = self.transition_matrices[-1]
         n = self.num_states
         if sparse:
             epsilon_sparse = sp.csr_array(epsilon_matrix)
@@ -245,24 +257,20 @@ class NFA:
             print(f"States to merge: {states_to_merge}")
         states_to_keep = {i for i in range(self.num_states)}
         for states in states_to_merge:
-            new_transition = np.zeros((2, self.num_states), dtype=bool)
+            new_transition = np.zeros((len(self.alphabet), self.num_states), dtype=bool)
             for state in states:
-                new_transition[0] |= (
-                    self.transition_matrices[0][:, state]
-                    if outgoing
-                    else self.transition_matrices[0][state]
-                )
-                new_transition[1] |= (
-                    self.transition_matrices[1][:, state]
-                    if outgoing
-                    else self.transition_matrices[1][state]
-                )
+                for i in range(len(self.alphabet)):
+                    new_transition[i] |= (
+                        self.transition_matrices[i][:, state]
+                        if outgoing
+                        else self.transition_matrices[i][state]
+                    )
             if outgoing:
-                self.transition_matrices[0][:, states[-1]] = new_transition[0]
-                self.transition_matrices[1][:, states[-1]] = new_transition[1]
+                for i in range(len(self.alphabet)):
+                    self.transition_matrices[i][:, states[-1]] = new_transition[i]
             else:
-                self.transition_matrices[0][states[-1]] = new_transition[0]
-                self.transition_matrices[1][states[-1]] = new_transition[1]
+                for i in range(len(self.alphabet)):
+                    self.transition_matrices[i][states[-1]] = new_transition[i]
             states_to_keep -= set(states[:-1])
         states_to_keep = np.array(sorted(states_to_keep), dtype=int)
         self.transition_matrices = np.array(
@@ -272,7 +280,7 @@ class NFA:
             ]
         )
         density = np.count_nonzero(self.transition_matrices) / (
-            self.num_states * self.num_states * 2
+            self.num_states * self.num_states * len(self.alphabet)
         )
         self.sparse = density < 0.05
         if self.sparse:
@@ -302,6 +310,66 @@ class NFA:
             changed = self._reduce_equals(outgoing=True)
             changed |= self._reduce_equals(outgoing=False)
 
+    def reduce_to_boolean_alphabet(self) -> None:
+        """
+        Reduces the NFA to a similar NFA with a boolean alphabet {0,1}.
+        """
+        if self.num_states == 0:
+            self.alphabet = [0, 1]
+            return
+        if len(self.alphabet) == 2:
+            return
+        self.alphabet_factor = math.ceil(math.log2(len(self.alphabet)))
+        if self.sparse:
+            self.transition_matrices = np.array(
+                [mat.todense() for mat in self.transition_matrices], dtype=bool
+            )
+        new_num_states = self.num_states + (self.alphabet_factor - 1) * len(
+            self.transition_matrices.nonzero()[0]
+        )
+        new_transition_matrices = np.zeros(
+            (2, new_num_states, new_num_states), dtype=bool
+        )
+        count = 0
+        for symbol, mat in enumerate(self.transition_matrices):
+            src, dst = np.nonzero(mat)
+            for s, d in zip(src, dst):
+                binary_symbol = format(symbol, f"0{self.alphabet_factor}b")
+                current_state = -(self.num_states - s)
+                for i, bit in enumerate(binary_symbol):
+                    if i == self.alphabet_factor - 1:
+                        new_transition_matrices[int(bit)][
+                            current_state, -(self.num_states - d)
+                        ] = True
+                    else:
+                        intermediate_state = count
+                        new_transition_matrices[int(bit)][
+                            current_state, intermediate_state
+                        ] = True
+                        current_state = intermediate_state
+                        count += 1
+        self.transition_matrices = new_transition_matrices
+        self.transition_matrices_backwards = np.array(
+            [mat.T for mat in self.transition_matrices], dtype=bool
+        )
+        self.alphabet = [0, 1]
+        self.num_states = new_num_states
+        self.start_states = np.array([self.num_states - 2], dtype=int)
+        self.accept_states = np.array([self.num_states - 1], dtype=int)
+        density = np.count_nonzero(self.transition_matrices) / (
+            self.num_states * self.num_states * len(self.alphabet)
+        )
+        self.sparse = density < 0.05
+        if self.sparse:
+            self.transition_matrices = np.array(
+                [sp.csr_array(mat, dtype=bool) for mat in self.transition_matrices],
+                dtype=object,
+            )
+            self.transition_matrices_backwards = np.array(
+                [mat.T.tocsr() for mat in self.transition_matrices], dtype=object
+            )
+        self.minimize()
+
     def simulate(self, input_string: np.ndarray) -> np.ndarray:
         reached_states = np.zeros(self.num_states, dtype=bool)
         reached_states[self.start_states] = True
@@ -320,9 +388,10 @@ class DAG:
         self.transition_matrices = nfa.transition_matrices
         self.transition_matrices_backwards = nfa.transition_matrices_backwards
         self.sparse = nfa.sparse
-        self.alphabet = [0, 1]
+        self.alphabet = nfa.alphabet
         self.m = nfa.num_states
-        self.n = n
+        self.n = n * nfa.alphabet_factor
+        self.alphabet_factor = nfa.alphabet_factor
         if n < 1:
             raise ValueError("n must be at least 1.")
         if self.m == 0:
@@ -355,21 +424,27 @@ class DAG:
 
     def _compute_layers(self):
         if self.sparse:
-            forwards_transitions = (
-                self.transition_matrices[0] + self.transition_matrices[1]
-            )
-            backwards_transitions = (
-                self.transition_matrices_backwards[0]
-                + self.transition_matrices_backwards[1]
-            )
+            forwards_transitions = self.transition_matrices[0]
+            for i in range(1, len(self.alphabet)):
+                forwards_transitions = (
+                    forwards_transitions + self.transition_matrices[i]
+                )
+            backwards_transitions = self.transition_matrices_backwards[0]
+            for i in range(1, len(self.alphabet)):
+                backwards_transitions = (
+                    backwards_transitions + self.transition_matrices_backwards[i]
+                )
         else:
-            forwards_transitions = (
-                self.transition_matrices[0] | self.transition_matrices[1]
-            )
-            backwards_transitions = (
-                self.transition_matrices_backwards[0]
-                | self.transition_matrices_backwards[1]
-            )
+            forwards_transitions = self.transition_matrices[0]
+            for i in range(1, len(self.alphabet)):
+                forwards_transitions = (
+                    forwards_transitions | self.transition_matrices[i]
+                )
+            backwards_transitions = self.transition_matrices_backwards[0]
+            for i in range(1, len(self.alphabet)):
+                backwards_transitions = (
+                    backwards_transitions | self.transition_matrices_backwards[i]
+                )
         for i in range(1, self.n + 1):
             reachable = self.states[i - 1] @ forwards_transitions
             accepting = self.states[self.n + 1 - i] @ backwards_transitions
@@ -440,14 +515,11 @@ class DAG:
         current_states[:, self.start_states] = True
         for i in range(n):
             symbols = input_batch[:, i]
-            mask_0 = symbols == 0
-            mask_1 = symbols == 1
-            current_states[mask_0] = (
-                current_states[mask_0] @ self.transition_matrices[0]
-            )
-            current_states[mask_1] = (
-                current_states[mask_1] @ self.transition_matrices[1]
-            )
+            masks = [symbols == symbol for symbol in self.alphabet]
+            for symbol, mask in enumerate(masks):
+                current_states[mask] = (
+                    current_states[mask] @ self.transition_matrices[symbol]
+                )
         return np.logical_and(current_states, self.states[n])
 
     def is_accepted(self, input_string: np.ndarray) -> bool:

@@ -14,6 +14,8 @@ def log_run(
     M: int,
     M2: int,
     N: int,
+    N2: int,
+    alphabet_size: int,
     seed: int | str,
     epsilon: Fraction,
     delta: Fraction,
@@ -23,9 +25,8 @@ def log_run(
     max_size: float,
     algo: str,
     time_sec: float,
-    minimize_version: str = "New",
-    system: str = "My PC",
-    db_path="results_combined.db",
+    system: str = "My Laptop",
+    db_path="results.db",
 ):
     # normalize to Decimal for log; store string for exactness
     if exact == 0:
@@ -41,6 +42,8 @@ def log_run(
         M=M,
         M2=M2,
         N=N,
+        N2=N2,
+        alphabet_size=alphabet_size,
         seed=str(seed),
         epsilon=float(epsilon),
         delta=float(delta),
@@ -53,14 +56,13 @@ def log_run(
         log2_exact=log2_decimal(ex),
         log2_algo_res=log2_decimal(ap),
         system=str(system),
-        minimize_version=str(minimize_version),
     )
     con = sqlite3.connect(db_path)
     con.execute(
         """
         INSERT INTO runs
-        (M, M2, N, seed, epsilon, delta, exact, algo_res, ratio, max_size, time_sec, algo, log2_exact, log2_algo_res, system, minimize_version)
-        VALUES (:M,:M2,:N,:seed,:epsilon,:delta,:exact,:algo_res,:ratio,:max_size,:time_sec,:algo,:log2_exact,:log2_algo_res,:system,:minimize_version)
+        (M, M2, N, N2, alphabet_size, seed, epsilon, delta, exact, algo_res, ratio, max_size, time_sec, algo, log2_exact, log2_algo_res, system)
+        VALUES (:M,:M2,:N,:N2,:alphabet_size,:seed,:epsilon,:delta,:exact,:algo_res,:ratio,:max_size,:time_sec,:algo,:log2_exact,:log2_algo_res,:system)
     """,
         row,
     )

@@ -19,12 +19,16 @@ Transition = Tuple[int, int, int]  # (u, a, v) with a in {0,1}
 # ---------- Mean-field predictor and calibration ----------
 
 
-def _predict_fraction(m: int, n: int, p: float, alpha: float) -> float:
+def _predict_fraction(
+    m: int, n: int, p: float, alpha: float, alphabet_size: int
+) -> float:
+    assert alphabet_size >= 2
     if p <= 0.0:
         k = 1.0
     else:
         k = 1.0
-        log1m_p = math.log1p(-p)  # < 0
+        p_eff = 1.0 - (1.0 - p) ** alphabet_size
+        log1m_p = math.log1p(-p_eff)  # < 0
         for _ in range(n):
             k = m * (1.0 - math.exp(k * log1m_p))
     return 1.0 - math.exp(k * math.log1p(-alpha))
@@ -34,6 +38,7 @@ def calibrate_p(
     m: int,
     n: int,
     r: float,
+    alphabet_size: int,
     alpha: float = 0.5,
     p_lo: Optional[float] = None,
     p_hi: Optional[float] = None,
@@ -46,9 +51,9 @@ def calibrate_p(
     if p_lo is None:
         p_lo = 1e-6
     if p_hi is None:
-        p_hi = min(5.0 / m, 0.5)
-    r_lo = _predict_fraction(m, n, p_lo, alpha)
-    r_hi = _predict_fraction(m, n, p_hi, alpha)
+        p_hi = min(5.0 / (m * alphabet_size), 0.5)
+    r_lo = _predict_fraction(m, n, p_lo, alpha, alphabet_size)
+    r_hi = _predict_fraction(m, n, p_hi, alpha, alphabet_size)
     if r <= r_lo:
         return p_lo
     if r >= r_hi:
@@ -56,7 +61,7 @@ def calibrate_p(
     lo, hi = p_lo, p_hi
     for _ in range(max_iter):
         mid = 0.5 * (lo + hi)
-        r_mid = _predict_fraction(m, n, mid, alpha)
+        r_mid = _predict_fraction(m, n, mid, alpha, alphabet_size)
         if abs(r_mid - r) <= tol:
             return mid
         if r_mid < r:
@@ -71,16 +76,16 @@ def sample_edges(
     p: float,
     alpha: float,
     rng: random.Random,
+    alphabet_size: int,
     start: int = 0,
     accept_count: Optional[int] = None,
 ) -> Tuple[List[Transition], int, Set[int]]:
     trans: List[Transition] = []
     for u in range(m):
         for v in range(m):
-            if rng.random() < p:
-                trans.append((u, 0, v))
-            if rng.random() < p:
-                trans.append((u, 1, v))
+            for symbol in range(alphabet_size):
+                if rng.random() < p:
+                    trans.append((u, symbol, v))
     if accept_count is not None:
         accept_count = max(1, min(m, int(accept_count)))
         accepts = set(rng.sample(range(m), accept_count))
@@ -94,11 +99,12 @@ def sample_edges(
 def generate_nfa(
     m: int,
     n: int,
+    alphabet_size: int = 2,
     seed: Optional[int] = None,
     logging: bool = False,
 ) -> Tuple[List[Transition], int, Set[int], Dict]:
     """
-    Choose an integer target k uniformly from {0,1,...,2^n}, then attempt to generate
+    Choose an integer target k uniformly from {0,1,...,alphabet_size^n}, then attempt to generate
     an NFA whose EXACT number of accepted words of length n equals k.
     Returns (transitions, start, accepts, info) with 'target_count' and 'exact_count'.
     """
@@ -107,11 +113,11 @@ def generate_nfa(
     max_tries = 25
     alpha = 0.5
     rng = random.Random(seed)
-    total = 1 << n
+    total = alphabet_size**n
     k_target = 1 + rng.randrange(total)  # Not interested in empty languages
     r_target = k_target / total if total > 0 else 0.0
-    p = calibrate_p(m, n, r_target, alpha=alpha)
-    pmin, pmax = 1e-6, min(5.0 / m, 0.5)
+    p = calibrate_p(m, n, r_target, alpha=alpha, alphabet_size=alphabet_size)
+    pmin, pmax = 1e-6, min(5.0 / (m * alphabet_size), 0.5)
     history: List[Tuple[float, float]] = []
     best_pack = None
     best_gap = float("inf")
@@ -120,22 +126,33 @@ def generate_nfa(
 
     for t in range(max_tries):
         transitions, s, accepts = sample_edges(
-            m, p, alpha, rng, start=start, accept_count=None
+            m,
+            p,
+            alpha,
+            rng,
+            alphabet_size=alphabet_size,
+            start=start,
+            accept_count=None,
         )
         data = {"transitions": transitions, "start": [s], "accepts": list(accepts)}
         with open("current.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        nfa = NFA(m, transitions, [s], list(accepts), debug=False)
+        nfa = NFA(
+            m, transitions, [s], list(accepts), alphabet_size=alphabet_size, debug=False
+        )
         nfa.minimize()
+        nfa.reduce_to_boolean_alphabet()
         dag = DAG(nfa, n)
         r_exact = (
             BruteForcePowerset_wrapper(
                 dag=dag,
                 n=n,
                 M=m,
+                alphabet_size=alphabet_size,
                 seed=f"Gen {t}: {seed}",
                 printing=False,
                 logging=logging,
+                progress_bar=False,
             )
             / total
         )
@@ -153,6 +170,7 @@ def generate_nfa(
                     "p": p,
                     "alpha": alpha,
                     "n": n,
+                    "alphabet_size": alphabet_size,
                     "target_count": k_target,
                     "exact_count": k_exact,
                     "tries": t + 1,
@@ -180,6 +198,7 @@ def generate_nfa(
         "p": best_p,
         "alpha": alpha,
         "n": n,
+        "alphabet_size": alphabet_size,
         "target_count": k_target,
         "exact_count": int(round(best_r * total)) if best_r is not None else None,
         "tries": max_tries,

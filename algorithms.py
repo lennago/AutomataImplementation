@@ -885,12 +885,14 @@ class BruteForcePowerset:
             else range(self._n)
         ):
             next_states_set = self._dag.simulate_one(cur_states_set, 0, layer)
-            next_states_set = np.append(
-                next_states_set,
-                self._dag.simulate_one(cur_states_set, 1, layer),
-                axis=0,
-            )
-            prev_counts = np.append(cur_counts, cur_counts, axis=0)
+            prev_counts = cur_counts.copy()
+            for symbol in range(1, len(self._dag.alphabet)):
+                next_states_set = np.append(
+                    next_states_set,
+                    self._dag.simulate_one(cur_states_set, symbol, layer),
+                    axis=0,
+                )
+                prev_counts = np.append(prev_counts, cur_counts, axis=0)
             unique_next_states_set, indices = np.unique(
                 next_states_set, axis=0, return_inverse=True
             )

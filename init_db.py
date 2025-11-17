@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS runs (
   M         INTEGER NOT NULL,
   M2        INTEGER NOT NULL,
   N         INTEGER NOT NULL,
+  N2        INTEGER NOT NULL,
+  alphabet_size   INTEGER NOT NULL,
+
   Seed      TEXT NOT NULL,
   EPSILON   REAL NOT NULL,
   DELTA     REAL NOT NULL,
