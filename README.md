@@ -1,5 +1,7 @@
 ## AutomataImplementation
 
+This repository contains the code for my B.Sc. thesis “Counting and Sampling Models of finite Automata” at RWTH Aachen (2025).
+
 Algorithms and tooling to count |L^n(NFA)| for a given nondeterministic finite automaton (NFA) and word length n. The project implements and evaluates:
 
 - MainFPRAS (from Arenas et al.)
